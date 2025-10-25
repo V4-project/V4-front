@@ -12,7 +12,8 @@ All notable additions are listed here.
   - Uses explicit `malloc` / `free` allocation; returns errors instead of throwing.
   - Error messages are written into a provided buffer (`char* err`, `size_t err_cap`).
   - Fully compatible with `-fno-exceptions` and `-fno-rtti`.
-  - Added support for arithmetic operations: `+`, `-`, `*`, `/`, `MOD`
+  - Added support for arithmetic operations
+  - Added support for comparison operations
 
 - **Public API (`front_api.h`)**
   - Defined stable C ABI:
@@ -31,15 +32,8 @@ All notable additions are listed here.
     - Hex and boundary values (`INT32_MIN`, `INT32_MAX`)
     - Unknown tokens → proper error messages
     - `v4front_compile_word()` wrapper consistency
-  - **Added `test_arithmetic.cpp`** - Comprehensive arithmetic operation tests:
-    - Simple addition (`10 20 +`)
-    - Subtraction (`50 30 -`)
-    - Multiplication (`6 7 *`)
-    - Division (`42 7 /`)
-    - Modulus (`43 7 MOD`)
-    - Complex expressions (`1 2 + 3 *`)
-    - Unknown operator error handling
-    - Literal parsing validation
+  - Added `test_arithmetic.cpp
+  - Added `test_comparison.cpp
   - Configured doctest to work under `-fno-exceptions` via  
     `DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS`.
   - All tests properly define doctest macros before including headers.

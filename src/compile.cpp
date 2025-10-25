@@ -167,6 +167,18 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       opcode = V4_OP_DIV;
     else if (strcmp(token, "MOD") == 0)
       opcode = V4_OP_MOD;
+    else if (strcmp(token, "=") == 0 || strcmp(token, "==") == 0)
+      opcode = V4_OP_EQ;
+    else if (strcmp(token, "<>") == 0 || strcmp(token, "!=") == 0)
+      opcode = V4_OP_NE;
+    else if (strcmp(token, "<") == 0)
+      opcode = V4_OP_LT;
+    else if (strcmp(token, "<=") == 0)
+      opcode = V4_OP_LE;
+    else if (strcmp(token, ">") == 0)
+      opcode = V4_OP_GT;
+    else if (strcmp(token, ">=") == 0)
+      opcode = V4_OP_GE;
     else
     {
       // Unknown token
