@@ -60,7 +60,10 @@ target_include_directories(v4headers INTERFACE "${_V4_INC_SRC}")
 # ------------------------------------------------------------
 # Main Library
 # ------------------------------------------------------------
-add_library(v4front STATIC src/front_compile.cpp)
+add_library(v4front STATIC src/compile.cpp)
+target_sources(v4front PRIVATE
+  src/disasm.cpp
+)
 
 target_include_directories(v4front PUBLIC "${PROJECT_SOURCE_DIR}/include")
 
@@ -83,9 +86,14 @@ if(V4FRONT_BUILD_TESTS)
   add_executable(test_errors tests/test_errors.cpp)
   target_link_libraries(test_errors PRIVATE v4front)
 
+  add_executable(test_disasm tests/test_disasm.cpp)
+  target_link_libraries(test_disasm PRIVATE v4front)
+
   if(NOT MSVC)
     target_compile_options(test_errors PRIVATE -fno-exceptions -fno-rtti)
+    target_compile_options(test_disasm PRIVATE -fno-exceptions -fno-rtti)
   endif()
 
   add_test(NAME test_errors COMMAND test_errors)
+  add_test(NAME test_disasm COMMAND test_disasm)
 endif()
