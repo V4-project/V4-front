@@ -1,4 +1,4 @@
-#include "v4front/compile.h"
+#include "v4front/compile.hpp"
 
 #include <cassert>
 #include <cctype>   // isspace

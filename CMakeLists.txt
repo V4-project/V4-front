@@ -89,6 +89,9 @@ if(V4FRONT_BUILD_TESTS)
   add_executable(test_compile tests/test_compile.cpp)
   target_link_libraries(test_compile PRIVATE v4front)
 
+  add_executable(test_arithmetic tests/test_arithmetic.cpp)
+  target_link_libraries(test_arithmetic PRIVATE v4front)
+
   if(MSVC)
     # Match the library flags so CI on Windows is consistent
     foreach(tgt IN ITEMS test_errors test_disasm)
@@ -99,9 +102,11 @@ if(V4FRONT_BUILD_TESTS)
     target_compile_options(test_errors PRIVATE -fno-exceptions -fno-rtti)
     target_compile_options(test_disasm PRIVATE -fno-exceptions -fno-rtti)
     target_compile_options(test_compile PRIVATE -fno-exceptions -fno-rtti)
+    target_compile_options(test_arithmetic PRIVATE -fno-exceptions -fno-rtti)
   endif()
 
   add_test(NAME test_errors COMMAND test_errors)
   add_test(NAME test_disasm COMMAND test_disasm)
   add_test(NAME test_compile COMMAND test_compile)
+  add_test(NAME test_arithmetic COMMAND test_arithmetic)
 endif()

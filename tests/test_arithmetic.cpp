@@ -1,8 +1,10 @@
+#define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstdint>
 #include <cstring>
 #include <v4/opcodes.hpp>
 
-#include "v4front/front_api.h"
+#include "v4front/compile.hpp"
 #include "vendor/doctest/doctest.h"
 
 using Op = v4::Op;
