@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(v4front LANGUAGES CXX)
+project(v4front LANGUAGES C CXX)
 
 # ------------------------------------------------------------
 # Global configuration
@@ -125,6 +125,28 @@ target_compile_definitions(v4front-tests PRIVATE
 )
 
 add_test(NAME v4front-tests COMMAND v4front-tests)
+
+# C smoke test (pure C)
+add_executable(v4front-c-tests
+  tests/test_c.c
+)
+
+# Headers needed by the C test
+target_include_directories(v4front-c-tests PRIVATE
+  ${PROJECT_SOURCE_DIR}/include
+)
+
+# Link against the frontend library
+target_link_libraries(v4front-c-tests PRIVATE
+  v4front
+)
+
+# Match flags (no exceptions/RTTI are C++-only, so not needed here)
+target_compile_options(v4front-c-tests PRIVATE
+  -Wall -Wextra -Werror -Os
+)
+
+add_test(NAME v4front-c-tests COMMAND v4front-c-tests)
 
 # ------------------------------------------------------------
 # Usage:
