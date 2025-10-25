@@ -22,10 +22,7 @@ struct SymbolMapping
 };
 
 static constexpr SymbolMapping kSymbolMap[] = {
-    {"+", "ADD"},
-    {"-", "SUB"},
-    {"*", "MUL"},
-    {"/", "DIV"},
+    {"+", "ADD"}, {"-", "SUB"}, {"*", "MUL"}, {"/", "DIV"},
     // MOD is used as-is, no mapping needed
 };
 
