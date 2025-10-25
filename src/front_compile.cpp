@@ -14,7 +14,6 @@ namespace
 {
 
 // Symbol-to-primitive-name mapping for arithmetic operators
-// Maps Forth-style symbols to their primitive names in kPrimitiveTable
 struct SymbolMapping
 {
   const char* symbol;
@@ -22,12 +21,13 @@ struct SymbolMapping
 };
 
 static constexpr SymbolMapping kSymbolMap[] = {
-    {"+", "ADD"}, {"-", "SUB"}, {"*", "MUL"}, {"/", "DIV"},
-    // MOD is used as-is, no mapping needed
+    {"+", "ADD"},
+    {"-", "SUB"},
+    {"*", "MUL"},
+    {"/", "DIV"},
 };
 
 // Look up primitive by symbol or name
-// Returns true if found, with opcode written to 'out'
 inline bool lookup_primitive(std::string_view token, uint8_t& out)
 {
   // First, try symbol mapping
@@ -60,6 +60,16 @@ struct CodeBuffer
   uint8_t* data = nullptr;
   size_t size = 0;
   size_t capacity = 0;
+
+  // Destructor to prevent leaks
+  ~CodeBuffer()
+  {
+    if (data)
+    {
+      std::free(data);
+      data = nullptr;
+    }
+  }
 
   // Ensure capacity >= size + needed. Returns false on OOM.
   bool reserve(size_t needed)
@@ -109,6 +119,18 @@ struct CodeBuffer
     size += 4;
     return true;
   }
+
+  // Transfer ownership to output buffer
+  void transfer_to(V4FrontBuf* out)
+  {
+    out->data = data;
+    out->size = static_cast<uint32_t>(size);
+
+    // Detach to avoid double-free
+    data = nullptr;
+    size = 0;
+    capacity = 0;
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -153,14 +175,12 @@ inline int set_error_with_token(char* err, size_t capacity, const char* prefix,
 
 // ---------------------------------------------------------------------------
 // Parse int32_t without throwing
-// Accepts: decimal, 0x... (hex), 0... (oct) via strtol base=0
 // ---------------------------------------------------------------------------
 inline bool parse_int32(const char* str, int32_t& out)
 {
   if (!str)
     return false;
 
-  // Skip leading whitespace
   while (*str && std::isspace(static_cast<unsigned char>(*str)))
     ++str;
 
@@ -169,17 +189,16 @@ inline bool parse_int32(const char* str, int32_t& out)
   long value = std::strtol(str, &end, 0);
 
   if (str == end)
-    return false;  // No digits parsed
+    return false;
 
   if (errno == ERANGE)
-    return false;  // Overflow/underflow
+    return false;
 
-  // Skip trailing whitespace
   while (*end && std::isspace(static_cast<unsigned char>(*end)))
     ++end;
 
   if (*end != '\0')
-    return false;  // Trailing garbage
+    return false;
 
   if (value < INT32_MIN || value > INT32_MAX)
     return false;
@@ -200,14 +219,12 @@ static void tokenize(const char* source, std::vector<std::string>& tokens)
   const char* ptr = source;
   while (*ptr)
   {
-    // Skip whitespace
     while (*ptr && std::isspace(static_cast<unsigned char>(*ptr)))
       ++ptr;
 
     if (!*ptr)
       break;
 
-    // Extract token
     const char* start = ptr;
     while (*ptr && !std::isspace(static_cast<unsigned char>(*ptr)))
       ++ptr;
@@ -223,12 +240,6 @@ static void tokenize(const char* source, std::vector<std::string>& tokens)
 // -----------------------------------------------------------------------------
 extern "C"
 {
-  // Compile source into flat bytecode buffer.
-  // Semantics (Tier-0 with arithmetic primitives):
-  //   - For each integer token: emit V4_OP_LIT <imm32>
-  //   - For recognized primitives (+, -, *, /, MOD): emit their opcode
-  //   - Unknown tokens -> error
-  //   - Always append V4_OP_RET at the end
   int v4front_compile(const char* source, V4FrontBuf* out_buf, char* err, size_t err_cap)
   {
     if (!out_buf)
@@ -237,7 +248,7 @@ extern "C"
     out_buf->data = nullptr;
     out_buf->size = 0;
 
-    CodeBuffer code;
+    CodeBuffer code;  // Destructor will clean up on error
     std::vector<std::string> tokens;
     tokenize(source, tokens);
 
@@ -267,7 +278,7 @@ extern "C"
         continue;
       }
 
-      // Unknown token
+      // Unknown token - CodeBuffer destructor will clean up
       return set_error_with_token(err, err_cap, "unknown token: ", token.c_str());
     }
 
@@ -276,13 +287,7 @@ extern "C"
       return set_error(err, err_cap, "out of memory (emit RET)");
 
     // Transfer ownership to caller
-    out_buf->data = code.data;
-    out_buf->size = code.size;
-
-    // Detach to avoid double-free
-    code.data = nullptr;
-    code.size = 0;
-    code.capacity = 0;
+    code.transfer_to(out_buf);
 
     // Success
     if (err && err_cap)
@@ -290,16 +295,13 @@ extern "C"
     return 0;
   }
 
-  // Optional "compile a named word" variant. Currently a thin wrapper.
   int v4front_compile_word(const char* name, const char* source, V4FrontBuf* out_buf,
                            char* err, size_t err_cap)
   {
-    // Name is currently unused in this minimal Tier-0 implementation
     (void)name;
     return v4front_compile(source, out_buf, err, err_cap);
   }
 
-  // Free a buffer allocated by v4front_compile[_word]
   void v4front_free(V4FrontBuf* buf)
   {
     if (buf && buf->data)
