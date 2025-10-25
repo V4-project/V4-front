@@ -34,11 +34,11 @@ elseif(V4_FETCH)
       "main"
       CACHE STRING "V4 Git tag/branch")
 
-  FetchContent_Declare(
+  fetchcontent_declare(
     v4_src
     GIT_REPOSITORY ${V4_GIT_REPO}
     GIT_TAG ${V4_GIT_TAG})
-  FetchContent_MakeAvailable(v4_src)
+  fetchcontent_makeavailable(v4_src)
 
   set(_V4_INC_SRC "${v4_src_SOURCE_DIR}/include")
   message(STATUS "Fetched V4 from: ${v4_src_SOURCE_DIR}")
@@ -46,8 +46,7 @@ elseif(V4_FETCH)
 else()
   message(
     FATAL_ERROR
-      "V4 headers not specified.\n"
-      "Use one of:\n"
+      "V4 headers not specified.\n" "Use one of:\n"
       "  -DV4_INCLUDE_DIR=/path/to/V4/include\n"
       "  -DV4_FETCH=ON -DV4_GIT_REPO=... -DV4_GIT_TAG=...")
 endif()
@@ -61,10 +60,7 @@ target_include_directories(v4headers INTERFACE "${_V4_INC_SRC}")
 # ------------------------------------------------------------
 # Main Library
 # ------------------------------------------------------------
-add_library(v4front STATIC
-  src/compile.cpp
-  src/disasm.cpp
-)
+add_library(v4front STATIC src/compile.cpp src/disasm.cpp)
 target_include_directories(v4front PUBLIC "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(v4front PUBLIC v4headers)
 
@@ -74,7 +70,8 @@ if(MSVC)
   target_compile_definitions(v4front PRIVATE _HAS_EXCEPTIONS=0)
   target_compile_options(v4front PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
 else()
-  target_compile_options(v4front PRIVATE -Wall -Wextra -pedantic -Werror -fno-exceptions -fno-rtti)
+  target_compile_options(v4front PRIVATE -Wall -Wextra -pedantic -Werror -fno-exceptions
+                                         -fno-rtti)
 endif()
 
 # ------------------------------------------------------------
