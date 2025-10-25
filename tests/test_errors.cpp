@@ -3,8 +3,8 @@
 #include <cstring>
 
 #include "v4/opcodes.h"
+#include "v4front/compile.h"
 #include "v4front/errors.hpp"
-#include "v4front/front_api.h"
 #include "vendor/doctest/doctest.h"
 
 using namespace v4front;

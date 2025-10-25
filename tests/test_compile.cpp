@@ -1,3 +1,5 @@
+#define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <v4/opcodes.h>
 
 #include <cstdint>
@@ -5,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "v4front/front_api.h"
+#include "v4front/compile.h"
 #include "vendor/doctest/doctest.h"
 
 // RAII guard for V4FrontBuf (safe even without exceptions)

@@ -1,3 +1,5 @@
+#include "v4front/compile.h"
+
 #include <cassert>
 #include <cctype>   // isspace
 #include <cstdlib>  // malloc, free, strtol
@@ -5,7 +7,6 @@
 
 #include "v4/opcodes.h"  // V4_OP_LIT, V4_OP_RET, etc.
 #include "v4front/errors.hpp"
-#include "v4front/front_api.h"
 
 using namespace v4front;
 
