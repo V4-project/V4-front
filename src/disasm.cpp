@@ -30,10 +30,7 @@ static inline OpInfo get_info(uint8_t opcode)
   {
 #define OP(NAME, CODE, IMM) \
   case CODE:                \
-    return OpInfo           \
-    {                       \
-      #NAME, CODE, IMM      \
-    };
+    return OpInfo{#NAME, CODE, IMM};
 #include "v4/opcodes.def"
 #undef OP
     default:
