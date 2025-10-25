@@ -18,7 +18,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 option(V4_FETCH "Fetch V4 headers/defs from Git" OFF)
 set(V4_INCLUDE_DIR "" CACHE PATH "Path to V4 include dir (contains v4/...)")
 set(V4_GIT_REPO "https://github.com/kirisaki/V4" CACHE STRING "V4 Git repository URL")
-set(V4_GIT_TAG "v0.1.1" CACHE STRING "Pinned V4 commit or tag")
+set(V4_GIT_TAG "v0.1.2" CACHE STRING "Pinned V4 commit or tag")
 
 # ------------------------------------------------------------
 # Resolve V4 include directories
