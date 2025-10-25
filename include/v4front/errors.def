@@ -1,0 +1,7 @@
+// name, value, message
+ERR(OK,              0,  "ok")
+ERR(UnknownToken,   -1, "unknown token")
+ERR(InvalidInteger, -2, "invalid integer format")
+ERR(OutOfMemory,    -3, "out of memory")
+ERR(BufferTooSmall, -4, "buffer too small")
+ERR(EmptyInput,     -5, "empty input")

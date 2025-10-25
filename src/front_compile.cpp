@@ -1,315 +1,240 @@
-#include <cctype>
-#include <cerrno>
-#include <cstdint>
-#include <cstdlib>
-#include <cstring>
-#include <string>
-#include <string_view>
-#include <v4/opcodes.hpp>
-#include <vector>
+#include <cassert>
+#include <cctype>   // isspace
+#include <cstdlib>  // malloc, free, strtol
+#include <cstring>  // strcmp, strlen, strncpy
 
+#include "v4/opcodes.h"  // V4_OP_LIT, V4_OP_RET, etc.
+#include "v4front/errors.hpp"
 #include "v4front/front_api.h"
 
-namespace
-{
+using namespace v4front;
 
-// Symbol-to-primitive-name mapping for arithmetic operators
-struct SymbolMapping
-{
-  const char* symbol;
-  const char* prim_name;
-};
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
 
-static constexpr SymbolMapping kSymbolMap[] = {
-    {"+", "ADD"},
-    {"-", "SUB"},
-    {"*", "MUL"},
-    {"/", "DIV"},
-};
-
-// Look up primitive by symbol or name
-inline bool lookup_primitive(std::string_view token, uint8_t& out)
+// Write an error message into the user-provided buffer
+static void write_error(char* err, size_t err_cap, FrontErr code)
 {
-  // First, try symbol mapping
-  for (const auto& mapping : kSymbolMap)
+  if (err && err_cap > 0)
   {
-    if (token == mapping.symbol)
-    {
-      token = mapping.prim_name;
-      break;
-    }
+    const char* msg = front_err_str(code);
+    size_t len = strlen(msg);
+    if (len >= err_cap)
+      len = err_cap - 1;
+    memcpy(err, msg, len);
+    err[len] = '\0';
   }
-
-  // Look up in V4's primitive table
-  for (const auto& entry : v4::kPrimitiveTable)
-  {
-    if (token == entry.name)
-    {
-      out = entry.opcode;
-      return true;
-    }
-  }
-  return false;
 }
 
-// ---------------------------------------------------------------------------
-// Simple byte buffer that never throws
-// ---------------------------------------------------------------------------
-struct CodeBuffer
+// Write a custom error message (for detailed errors)
+static void write_error_msg(char* err, size_t err_cap, const char* msg)
 {
-  uint8_t* data = nullptr;
-  size_t size = 0;
-  size_t capacity = 0;
-
-  // Destructor to prevent leaks
-  ~CodeBuffer()
+  if (err && err_cap > 0)
   {
-    if (data)
-    {
-      std::free(data);
-      data = nullptr;
-    }
+    size_t len = strlen(msg);
+    if (len >= err_cap)
+      len = err_cap - 1;
+    memcpy(err, msg, len);
+    err[len] = '\0';
   }
-
-  // Ensure capacity >= size + needed. Returns false on OOM.
-  bool reserve(size_t needed)
-  {
-    if (capacity - size >= needed)
-      return true;
-
-    size_t new_capacity = capacity ? capacity : 64;
-    while (new_capacity - size < needed)
-    {
-      size_t next = new_capacity * 2;
-      if (next <= new_capacity)
-      {
-        // Overflow guard
-        return false;
-      }
-      new_capacity = next;
-    }
-
-    void* ptr = std::realloc(data, new_capacity);
-    if (!ptr)
-      return false;
-
-    data = static_cast<uint8_t*>(ptr);
-    capacity = new_capacity;
-    return true;
-  }
-
-  bool push_u8(uint8_t value)
-  {
-    if (!reserve(1))
-      return false;
-    data[size++] = value;
-    return true;
-  }
-
-  bool push_u32(uint32_t value)
-  {
-    if (!reserve(4))
-      return false;
-
-    // Little-endian layout
-    data[size + 0] = static_cast<uint8_t>(value & 0xFFu);
-    data[size + 1] = static_cast<uint8_t>((value >> 8) & 0xFFu);
-    data[size + 2] = static_cast<uint8_t>((value >> 16) & 0xFFu);
-    data[size + 3] = static_cast<uint8_t>((value >> 24) & 0xFFu);
-    size += 4;
-    return true;
-  }
-
-  // Transfer ownership to output buffer
-  void transfer_to(V4FrontBuf* out)
-  {
-    out->data = data;
-    out->size = static_cast<uint32_t>(size);
-
-    // Detach to avoid double-free
-    data = nullptr;
-    size = 0;
-    capacity = 0;
-  }
-};
-
-// ---------------------------------------------------------------------------
-// Error handling helpers (no exceptions)
-// ---------------------------------------------------------------------------
-inline int set_error(char* err, size_t capacity, const char* message)
-{
-  if (err && capacity)
-  {
-    size_t length = std::strlen(message);
-    if (length >= capacity)
-      length = capacity - 1;
-    std::memcpy(err, message, length);
-    err[length] = '\0';
-  }
-  return -1;
 }
 
-inline int set_error_with_token(char* err, size_t capacity, const char* prefix,
-                                const char* token)
+// Append a byte to a dynamically growing buffer
+static FrontErr append_byte(uint8_t** buf, uint32_t* size, uint32_t* cap, uint8_t byte)
 {
-  if (!err || capacity == 0)
-    return -1;
-
-  size_t prefix_len = std::strlen(prefix);
-  size_t token_len = std::strlen(token);
-  size_t total_len = prefix_len + token_len;
-
-  if (total_len >= capacity)
-    total_len = capacity - 1;
-
-  size_t copy_prefix = (prefix_len < total_len) ? prefix_len : total_len;
-  std::memcpy(err, prefix, copy_prefix);
-
-  size_t copy_token = (total_len > copy_prefix) ? (total_len - copy_prefix) : 0;
-  if (copy_token)
-    std::memcpy(err + copy_prefix, token, copy_token);
-
-  err[total_len] = '\0';
-  return -1;
+  if (*size >= *cap)
+  {
+    uint32_t new_cap = (*cap == 0) ? 64 : (*cap * 2);
+    uint8_t* new_buf = (uint8_t*)realloc(*buf, new_cap);
+    if (!new_buf)
+      return FrontErr::OutOfMemory;
+    *buf = new_buf;
+    *cap = new_cap;
+  }
+  (*buf)[(*size)++] = byte;
+  return FrontErr::OK;
 }
 
-// ---------------------------------------------------------------------------
-// Parse int32_t without throwing
-// ---------------------------------------------------------------------------
-inline bool parse_int32(const char* str, int32_t& out)
+// Append a 32-bit integer in little-endian format
+static FrontErr append_i32_le(uint8_t** buf, uint32_t* size, uint32_t* cap, int32_t val)
 {
-  if (!str)
+  FrontErr err;
+  if ((err = append_byte(buf, size, cap, (uint8_t)(val & 0xFF))) != FrontErr::OK)
+    return err;
+  if ((err = append_byte(buf, size, cap, (uint8_t)((val >> 8) & 0xFF))) != FrontErr::OK)
+    return err;
+  if ((err = append_byte(buf, size, cap, (uint8_t)((val >> 16) & 0xFF))) != FrontErr::OK)
+    return err;
+  if ((err = append_byte(buf, size, cap, (uint8_t)((val >> 24) & 0xFF))) != FrontErr::OK)
+    return err;
+  return FrontErr::OK;
+}
+
+// Try parsing a token as an integer
+static bool try_parse_int(const char* token, int32_t* out)
+{
+  char* endptr = nullptr;
+  long val = strtol(token, &endptr, 0);  // base=0 auto-detects hex/oct
+  if (endptr == token || *endptr != '\0')
     return false;
-
-  while (*str && std::isspace(static_cast<unsigned char>(*str)))
-    ++str;
-
-  errno = 0;
-  char* end = nullptr;
-  long value = std::strtol(str, &end, 0);
-
-  if (str == end)
-    return false;
-
-  if (errno == ERANGE)
-    return false;
-
-  while (*end && std::isspace(static_cast<unsigned char>(*end)))
-    ++end;
-
-  if (*end != '\0')
-    return false;
-
-  if (value < INT32_MIN || value > INT32_MAX)
-    return false;
-
-  out = static_cast<int32_t>(value);
+  *out = (int32_t)val;
   return true;
 }
 
 // ---------------------------------------------------------------------------
-// Tokenization (whitespace-separated)
+// Main compilation logic
 // ---------------------------------------------------------------------------
-static void tokenize(const char* source, std::vector<std::string>& tokens)
+
+static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
 {
-  tokens.clear();
-  if (!source)
-    return;
+  assert(out_buf);
 
-  const char* ptr = source;
-  while (*ptr)
+  // Initialize output buffer
+  out_buf->data = nullptr;
+  out_buf->size = 0;
+
+  // Allocate dynamic bytecode buffer
+  uint8_t* bc = nullptr;
+  uint32_t bc_size = 0;
+  uint32_t bc_cap = 0;
+  FrontErr err = FrontErr::OK;
+
+  // Handle empty input
+  if (!source || !*source)
   {
-    while (*ptr && std::isspace(static_cast<unsigned char>(*ptr)))
-      ++ptr;
+    // Empty input: just emit RET
+    if ((err = append_byte(&bc, &bc_size, &bc_cap, V4_OP_RET)) != FrontErr::OK)
+    {
+      free(bc);
+      return err;
+    }
+    out_buf->data = bc;
+    out_buf->size = bc_size;
+    return FrontErr::OK;
+  }
 
-    if (!*ptr)
+  // Tokenization and code generation
+  const char* p = source;
+  char token[256];
+
+  while (*p)
+  {
+    // Skip whitespace
+    while (*p && isspace((unsigned char)*p))
+      p++;
+    if (!*p)
       break;
 
-    const char* start = ptr;
-    while (*ptr && !std::isspace(static_cast<unsigned char>(*ptr)))
-      ++ptr;
+    // Extract token
+    const char* token_start = p;
+    while (*p && !isspace((unsigned char)*p))
+      p++;
+    size_t token_len = p - token_start;
+    if (token_len >= sizeof(token))
+      token_len = sizeof(token) - 1;
+    memcpy(token, token_start, token_len);
+    token[token_len] = '\0';
 
-    tokens.emplace_back(start, static_cast<size_t>(ptr - start));
+    // Try parsing as integer
+    int32_t val;
+    if (try_parse_int(token, &val))
+    {
+      // Emit: [LIT] [imm32_le]
+      if ((err = append_byte(&bc, &bc_size, &bc_cap, V4_OP_LIT)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_i32_le(&bc, &bc_size, &bc_cap, val)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      continue;
+    }
+
+    // Try matching arithmetic operators
+    uint8_t opcode = 0;
+    if (strcmp(token, "+") == 0)
+      opcode = V4_OP_ADD;
+    else if (strcmp(token, "-") == 0)
+      opcode = V4_OP_SUB;
+    else if (strcmp(token, "*") == 0)
+      opcode = V4_OP_MUL;
+    else if (strcmp(token, "/") == 0)
+      opcode = V4_OP_DIV;
+    else if (strcmp(token, "MOD") == 0)
+      opcode = V4_OP_MOD;
+    else
+    {
+      // Unknown token
+      free(bc);
+      return FrontErr::UnknownToken;
+    }
+
+    if ((err = append_byte(&bc, &bc_size, &bc_cap, opcode)) != FrontErr::OK)
+    {
+      free(bc);
+      return err;
+    }
   }
+
+  // Append RET
+  if ((err = append_byte(&bc, &bc_size, &bc_cap, V4_OP_RET)) != FrontErr::OK)
+  {
+    free(bc);
+    return err;
+  }
+
+  out_buf->data = bc;
+  out_buf->size = bc_size;
+  return FrontErr::OK;
 }
 
-}  // namespace
+// ---------------------------------------------------------------------------
+// Public C API implementations
+// ---------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// C API implementation (no exceptions)
-// -----------------------------------------------------------------------------
-extern "C"
+extern "C" const char* v4front_err_str(v4front_err code)
 {
-  int v4front_compile(const char* source, V4FrontBuf* out_buf, char* err, size_t err_cap)
+  return front_err_str(static_cast<FrontErr>(code));
+}
+
+extern "C" v4front_err v4front_compile(const char* source, V4FrontBuf* out_buf, char* err,
+                                       size_t err_cap)
+{
+  if (!out_buf)
   {
-    if (!out_buf)
-      return set_error(err, err_cap, "out_buf is null");
-
-    out_buf->data = nullptr;
-    out_buf->size = 0;
-
-    CodeBuffer code;  // Destructor will clean up on error
-    std::vector<std::string> tokens;
-    tokenize(source, tokens);
-
-    for (size_t i = 0; i < tokens.size(); ++i)
-    {
-      const std::string& token = tokens[i];
-
-      // Try integer literal first
-      int32_t immediate = 0;
-      if (parse_int32(token.c_str(), immediate))
-      {
-        if (!code.push_u8(static_cast<uint8_t>(v4::Op::LIT)))
-          return set_error(err, err_cap, "out of memory (emit LIT)");
-
-        if (!code.push_u32(static_cast<uint32_t>(immediate)))
-          return set_error(err, err_cap, "out of memory (emit imm32)");
-
-        continue;
-      }
-
-      // Try primitive lookup
-      uint8_t opcode;
-      if (lookup_primitive(token, opcode))
-      {
-        if (!code.push_u8(opcode))
-          return set_error(err, err_cap, "out of memory (emit opcode)");
-        continue;
-      }
-
-      // Unknown token - CodeBuffer destructor will clean up
-      return set_error_with_token(err, err_cap, "unknown token: ", token.c_str());
-    }
-
-    // Append RET
-    if (!code.push_u8(static_cast<uint8_t>(v4::Op::RET)))
-      return set_error(err, err_cap, "out of memory (emit RET)");
-
-    // Transfer ownership to caller
-    code.transfer_to(out_buf);
-
-    // Success
-    if (err && err_cap)
-      err[0] = '\0';
-    return 0;
+    write_error_msg(err, err_cap, "output buffer is NULL");
+    return front_err_to_int(FrontErr::BufferTooSmall);
   }
 
-  int v4front_compile_word(const char* name, const char* source, V4FrontBuf* out_buf,
-                           char* err, size_t err_cap)
+  FrontErr result = compile_internal(source, out_buf);
+
+  if (result != FrontErr::OK)
   {
-    (void)name;
-    return v4front_compile(source, out_buf, err, err_cap);
+    write_error(err, err_cap, result);
   }
 
-  void v4front_free(V4FrontBuf* buf)
-  {
-    if (buf && buf->data)
-    {
-      std::free(buf->data);
-      buf->data = nullptr;
-      buf->size = 0;
-    }
-  }
+  return front_err_to_int(result);
+}
 
-}  // extern "C"
+extern "C" v4front_err v4front_compile_word(const char* name, const char* source,
+                                            V4FrontBuf* out_buf, char* err,
+                                            size_t err_cap)
+{
+  // Current implementation ignores 'name' parameter
+  (void)name;
+  return v4front_compile(source, out_buf, err, err_cap);
+}
+
+extern "C" void v4front_free(V4FrontBuf* buf)
+{
+  if (buf && buf->data)
+  {
+    free(buf->data);
+    buf->data = nullptr;
+    buf->size = 0;
+  }
+}

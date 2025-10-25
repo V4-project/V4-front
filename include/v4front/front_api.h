@@ -8,6 +8,21 @@ extern "C"
 #endif
 
   // ---------------------------------------------------------------------------
+  // Error code type
+  //  - Compatible with v4front::FrontErr enum in C++
+  //  - 0 = success, negative = error
+  // ---------------------------------------------------------------------------
+  typedef int v4front_err;
+
+  // Error codes (matching v4front::FrontErr)
+#define V4FRONT_OK 0
+#define V4FRONT_UNKNOWN_TOKEN -1
+#define V4FRONT_INVALID_INTEGER -2
+#define V4FRONT_OUT_OF_MEMORY -3
+#define V4FRONT_BUFFER_TOO_SMALL -4
+#define V4FRONT_EMPTY_INPUT -5
+
+  // ---------------------------------------------------------------------------
   // Public buffer type
   //  - Ownership of `data` is transferred to the caller; free with
   //    v4front_free().
@@ -21,10 +36,17 @@ extern "C"
 
   // ---------------------------------------------------------------------------
   // Error handling model (no exceptions)
-  //  - Functions return 0 on success; negative value on failure.
+  //  - Functions return v4front_err: 0 on success; negative value on failure.
   //  - When an error buffer (err, err_cap) is provided, a human-readable
   //    message is written into it (NUL-terminated, truncated if necessary).
   // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // v4front_err_str
+  //  - Returns a human-readable error message for a given error code.
+  //  - Returns "unknown error" for unrecognized codes.
+  // ---------------------------------------------------------------------------
+  const char* v4front_err_str(v4front_err code);
 
   // ---------------------------------------------------------------------------
   // v4front_compile
@@ -45,9 +67,10 @@ extern "C"
   //    err_cap  : capacity of `err` in bytes (0 allowed)
   //
   //  Returns:
-  //    0 on success; <0 on failure (e.g., invalid token, OOM).
+  //    v4front_err: 0 on success; negative error code on failure.
   // ---------------------------------------------------------------------------
-  int v4front_compile(const char* source, V4FrontBuf* out_buf, char* err, size_t err_cap);
+  v4front_err v4front_compile(const char* source, V4FrontBuf* out_buf, char* err,
+                              size_t err_cap);
 
   // ---------------------------------------------------------------------------
   // v4front_compile_word
@@ -55,8 +78,8 @@ extern "C"
   //  - Current minimal implementation ignores `name` and behaves like
   //    compile().
   // ---------------------------------------------------------------------------
-  int v4front_compile_word(const char* name, const char* source, V4FrontBuf* out_buf,
-                           char* err, size_t err_cap);
+  v4front_err v4front_compile_word(const char* name, const char* source,
+                                   V4FrontBuf* out_buf, char* err, size_t err_cap);
 
   // ---------------------------------------------------------------------------
   // v4front_free
