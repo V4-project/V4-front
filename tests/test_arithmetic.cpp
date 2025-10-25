@@ -1,7 +1,3 @@
-// Define doctest config BEFORE including doctest.h
-#define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-
 #include <cstdint>
 #include <cstring>
 #include <v4/opcodes.hpp>
