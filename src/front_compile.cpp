@@ -1,11 +1,10 @@
-#include <v4/opcodes.h>
-
 #include <cctype>
 #include <cerrno>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <v4/opcodes.hpp>
 #include <vector>
 
 #include "prim_table.hpp"
@@ -213,7 +212,7 @@ extern "C"
       int32_t immediate = 0;
       if (parse_int32(token.c_str(), immediate))
       {
-        if (!code.push_u8(static_cast<uint8_t>(V4_OP_LIT)))
+        if (!code.push_u8(static_cast<uint8_t>(v4::Op::LIT)))
           return set_error(err, err_cap, "out of memory (emit LIT)");
 
         if (!code.push_u32(static_cast<uint32_t>(immediate)))
@@ -223,15 +222,18 @@ extern "C"
       }
 
       // Future: add builtins here
-      //   if (token == "RET") { ... }
-      //   else if (lookup_primitive(token.c_str(), &opcode)) { ... }
+      //   uint8_t opcode;
+      //   if (lookup_primitive(token, opcode)) {
+      //     code.push_u8(opcode);
+      //     continue;
+      //   }
 
       // Reject non-integers to keep behavior explicit
       return set_error_with_token(err, err_cap, "unknown token: ", token.c_str());
     }
 
     // Append RET
-    if (!code.push_u8(static_cast<uint8_t>(V4_OP_RET)))
+    if (!code.push_u8(static_cast<uint8_t>(v4::Op::RET)))
       return set_error(err, err_cap, "out of memory (emit RET)");
 
     // Transfer ownership to caller
