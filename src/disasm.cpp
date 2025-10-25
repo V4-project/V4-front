@@ -28,14 +28,13 @@ static inline OpInfo get_info(uint8_t opcode)
 {
   switch (opcode)
   {
+    // clang-format off
 #define OP(NAME, CODE, IMM) \
   case CODE:                \
-    return OpInfo           \
-    {                       \
-      #NAME, CODE, IMM      \
-    };
+    return OpInfo{#NAME, CODE, IMM};
 #include "v4/opcodes.def"
 #undef OP
+// clang-format off
     default:
       return OpInfo{"???", opcode, ImmKind::None};
   }
