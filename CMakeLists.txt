@@ -34,11 +34,11 @@ elseif(V4_FETCH)
       "main"
       CACHE STRING "V4 Git tag/branch")
 
-  fetchcontent_declare(
+  FetchContent_Declare(
     v4_src
     GIT_REPOSITORY ${V4_GIT_REPO}
     GIT_TAG ${V4_GIT_TAG})
-  fetchcontent_makeavailable(v4_src)
+  FetchContent_MakeAvailable(v4_src)
 
   set(_V4_INC_SRC "${v4_src_SOURCE_DIR}/include")
   message(STATUS "Fetched V4 from: ${v4_src_SOURCE_DIR}")
@@ -46,7 +46,8 @@ elseif(V4_FETCH)
 else()
   message(
     FATAL_ERROR
-      "V4 headers not specified.\n" "Use one of:\n"
+      "V4 headers not specified.\n"
+      "Use one of:\n"
       "  -DV4_INCLUDE_DIR=/path/to/V4/include\n"
       "  -DV4_FETCH=ON -DV4_GIT_REPO=... -DV4_GIT_TAG=...")
 endif()
@@ -60,21 +61,20 @@ target_include_directories(v4headers INTERFACE "${_V4_INC_SRC}")
 # ------------------------------------------------------------
 # Main Library
 # ------------------------------------------------------------
-add_library(v4front STATIC src/compile.cpp)
-target_sources(v4front PRIVATE
+add_library(v4front STATIC
+  src/compile.cpp
   src/disasm.cpp
 )
-
 target_include_directories(v4front PUBLIC "${PROJECT_SOURCE_DIR}/include")
-
 target_link_libraries(v4front PUBLIC v4headers)
 
-# Compile options
+# Per-target compile flags (avoid global overrides to reduce MSVC "overriding /EH" noise)
 if(MSVC)
-  target_compile_options(v4front PRIVATE /W4 /GR- /EHs-c- /WX)
+  # No exceptions/RTTI + silence C4530 (STL internal try/catch) + keep /WX
+  target_compile_definitions(v4front PRIVATE _HAS_EXCEPTIONS=0)
+  target_compile_options(v4front PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
 else()
-  target_compile_options(v4front PRIVATE -Wall -Wextra -pedantic -Werror -fno-exceptions
-                                         -fno-rtti)
+  target_compile_options(v4front PRIVATE -Wall -Wextra -pedantic -Werror -fno-exceptions -fno-rtti)
 endif()
 
 # ------------------------------------------------------------
@@ -89,7 +89,13 @@ if(V4FRONT_BUILD_TESTS)
   add_executable(test_disasm tests/test_disasm.cpp)
   target_link_libraries(test_disasm PRIVATE v4front)
 
-  if(NOT MSVC)
+  if(MSVC)
+    # Match the library flags so CI on Windows is consistent
+    foreach(tgt IN ITEMS test_errors test_disasm)
+      target_compile_definitions(${tgt} PRIVATE _HAS_EXCEPTIONS=0)
+      target_compile_options(${tgt} PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
+    endforeach()
+  else()
     target_compile_options(test_errors PRIVATE -fno-exceptions -fno-rtti)
     target_compile_options(test_disasm PRIVATE -fno-exceptions -fno-rtti)
   endif()
