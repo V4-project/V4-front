@@ -1,125 +1,131 @@
-#include "vendor/doctest/doctest.h"
+#include <v4/opcodes.h>
 
-#include "v4front/front_api.h"
 #include <cstdint>
 #include <cstring>
 #include <string>
 #include <vector>
 
-#include <v4/opcodes.h> // expects V4_OP_LIT / V4_OP_RET
+#include "v4front/front_api.h"
+#include "vendor/doctest/doctest.h"
 
-// RAII guard (safe even without exceptions)
-struct BufGuard
+// RAII guard for V4FrontBuf (safe even without exceptions)
+struct BufferGuard
 {
-  V4FrontBuf *b;
-  explicit BufGuard(V4FrontBuf *bb) : b(bb) {}
-  ~BufGuard()
+  V4FrontBuf* buf;
+
+  explicit BufferGuard(V4FrontBuf* buffer) : buf(buffer) {}
+
+  ~BufferGuard()
   {
-    if (b)
-      v4front_free(b);
+    if (buf)
+      v4front_free(buf);
   }
 };
 
-// Read little-endian u32
-static uint32_t rd32(const uint8_t *p)
+// Read little-endian uint32_t from buffer
+static uint32_t read_u32_le(const uint8_t* ptr)
 {
-  return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+  return static_cast<uint32_t>(ptr[0]) | (static_cast<uint32_t>(ptr[1]) << 8) |
+         (static_cast<uint32_t>(ptr[2]) << 16) | (static_cast<uint32_t>(ptr[3]) << 24);
 }
 
 TEST_CASE("empty source -> RET only")
 {
   V4FrontBuf buf{};
-  BufGuard g(&buf);
+  BufferGuard guard(&buf);
   char err[128];
 
   int rc = v4front_compile("", &buf, err, sizeof(err));
   CHECK(rc == 0);
   REQUIRE(buf.size == 1);
-  CHECK(buf.data[0] == (uint8_t)V4_OP_RET);
+  CHECK(buf.data[0] == static_cast<uint8_t>(V4_OP_RET));
 }
 
 TEST_CASE("whitespace-only source -> RET only")
 {
   V4FrontBuf buf{};
-  BufGuard g(&buf);
+  BufferGuard guard(&buf);
   char err[128];
 
   int rc = v4front_compile("  \t  \n", &buf, err, sizeof(err));
   CHECK(rc == 0);
   REQUIRE(buf.size == 1);
-  CHECK(buf.data[0] == (uint8_t)V4_OP_RET);
+  CHECK(buf.data[0] == static_cast<uint8_t>(V4_OP_RET));
 }
 
 TEST_CASE("single literal -> LIT imm32 + RET")
 {
   V4FrontBuf buf{};
-  BufGuard g(&buf);
+  BufferGuard guard(&buf);
   char err[128];
 
   int rc = v4front_compile("42", &buf, err, sizeof(err));
   CHECK(rc == 0);
   REQUIRE(buf.size == 1 + 4 + 1);
-  CHECK(buf.data[0] == (uint8_t)V4_OP_LIT);
-  CHECK(rd32(&buf.data[1]) == 42u);
-  CHECK(buf.data[5] == (uint8_t)V4_OP_RET);
+  CHECK(buf.data[0] == static_cast<uint8_t>(V4_OP_LIT));
+  CHECK(read_u32_le(&buf.data[1]) == 42u);
+  CHECK(buf.data[5] == static_cast<uint8_t>(V4_OP_RET));
 }
 
 TEST_CASE("multiple literals and negative")
 {
   V4FrontBuf buf{};
-  BufGuard g(&buf);
+  BufferGuard guard(&buf);
   char err[128];
 
   int rc = v4front_compile("1 2 -3", &buf, err, sizeof(err));
   CHECK(rc == 0);
   REQUIRE(buf.size == (1 + 4) * 3 + 1);
 
-  size_t k = 0;
-  CHECK(buf.data[k++] == (uint8_t)V4_OP_LIT);
-  CHECK(rd32(&buf.data[k]) == 1u);
-  k += 4;
+  size_t offset = 0;
 
-  CHECK(buf.data[k++] == (uint8_t)V4_OP_LIT);
-  CHECK(rd32(&buf.data[k]) == 2u);
-  k += 4;
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(V4_OP_LIT));
+  CHECK(read_u32_le(&buf.data[offset]) == 1u);
+  offset += 4;
 
-  CHECK(buf.data[k++] == (uint8_t)V4_OP_LIT);
-  CHECK((int32_t)rd32(&buf.data[k]) == -3);
-  k += 4;
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(V4_OP_LIT));
+  CHECK(read_u32_le(&buf.data[offset]) == 2u);
+  offset += 4;
 
-  CHECK(buf.data[k] == (uint8_t)V4_OP_RET);
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(V4_OP_LIT));
+  CHECK(static_cast<int32_t>(read_u32_le(&buf.data[offset])) == -3);
+  offset += 4;
+
+  CHECK(buf.data[offset] == static_cast<uint8_t>(V4_OP_RET));
 }
 
 TEST_CASE("hex and boundary literals")
 {
   V4FrontBuf buf{};
-  BufGuard g(&buf);
+  BufferGuard guard(&buf);
   char err[128];
 
   int rc = v4front_compile("0x10 2147483647 -2147483648", &buf, err, sizeof(err));
   CHECK(rc == 0);
   REQUIRE(buf.size == (1 + 4) * 3 + 1);
 
-  size_t k = 0;
-  CHECK(buf.data[k++] == (uint8_t)V4_OP_LIT);
-  CHECK(rd32(&buf.data[k]) == 0x10u);
-  k += 4;
+  size_t offset = 0;
 
-  CHECK(buf.data[k++] == (uint8_t)V4_OP_LIT);
-  CHECK(rd32(&buf.data[k]) == 2147483647u);
-  k += 4;
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(V4_OP_LIT));
+  CHECK(read_u32_le(&buf.data[offset]) == 0x10u);
+  offset += 4;
 
-  CHECK(buf.data[k++] == (uint8_t)V4_OP_LIT);
-  CHECK((int32_t)rd32(&buf.data[k]) == (int32_t)0x80000000u);
-  k += 4;
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(V4_OP_LIT));
+  CHECK(read_u32_le(&buf.data[offset]) == 2147483647u);
+  offset += 4;
 
-  CHECK(buf.data[k] == (uint8_t)V4_OP_RET);
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(V4_OP_LIT));
+  CHECK(static_cast<int32_t>(read_u32_le(&buf.data[offset])) ==
+        static_cast<int32_t>(0x80000000u));
+  offset += 4;
+
+  CHECK(buf.data[offset] == static_cast<uint8_t>(V4_OP_RET));
 }
 
 TEST_CASE("unknown token -> error + message")
 {
   V4FrontBuf buf{};
-  BufGuard g(&buf);
+  BufferGuard guard(&buf);
   char err[128] = {0};
 
   int rc = v4front_compile("HELLO", &buf, err, sizeof(err));
@@ -130,21 +136,22 @@ TEST_CASE("unknown token -> error + message")
 TEST_CASE("compile_word wrapper passes through")
 {
   V4FrontBuf buf{};
-  BufGuard g(&buf);
+  BufferGuard guard(&buf);
   char err[128];
 
   int rc = v4front_compile_word("SOMEWORD", "7 8", &buf, err, sizeof(err));
   CHECK(rc == 0);
   REQUIRE(buf.size == (1 + 4) * 2 + 1);
 
-  size_t k = 0;
-  CHECK(buf.data[k++] == (uint8_t)V4_OP_LIT);
-  CHECK(rd32(&buf.data[k]) == 7u);
-  k += 4;
+  size_t offset = 0;
 
-  CHECK(buf.data[k++] == (uint8_t)V4_OP_LIT);
-  CHECK(rd32(&buf.data[k]) == 8u);
-  k += 4;
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(V4_OP_LIT));
+  CHECK(read_u32_le(&buf.data[offset]) == 7u);
+  offset += 4;
 
-  CHECK(buf.data[k] == (uint8_t)V4_OP_RET);
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(V4_OP_LIT));
+  CHECK(read_u32_le(&buf.data[offset]) == 8u);
+  offset += 4;
+
+  CHECK(buf.data[offset] == static_cast<uint8_t>(V4_OP_RET));
 }
