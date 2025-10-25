@@ -4,14 +4,56 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include <v4/opcodes.hpp>
 #include <vector>
 
-#include "prim_table.hpp"
 #include "v4front/front_api.h"
 
 namespace
 {
+
+// Symbol-to-primitive-name mapping for arithmetic operators
+// Maps Forth-style symbols to their primitive names in kPrimitiveTable
+struct SymbolMapping
+{
+  const char* symbol;
+  const char* prim_name;
+};
+
+static constexpr SymbolMapping kSymbolMap[] = {
+    {"+", "ADD"},
+    {"-", "SUB"},
+    {"*", "MUL"},
+    {"/", "DIV"},
+    // MOD is used as-is, no mapping needed
+};
+
+// Look up primitive by symbol or name
+// Returns true if found, with opcode written to 'out'
+inline bool lookup_primitive(std::string_view token, uint8_t& out)
+{
+  // First, try symbol mapping
+  for (const auto& mapping : kSymbolMap)
+  {
+    if (token == mapping.symbol)
+    {
+      token = mapping.prim_name;
+      break;
+    }
+  }
+
+  // Look up in V4's primitive table
+  for (const auto& entry : v4::kPrimitiveTable)
+  {
+    if (token == entry.name)
+    {
+      out = entry.opcode;
+      return true;
+    }
+  }
+  return false;
+}
 
 // ---------------------------------------------------------------------------
 // Simple byte buffer that never throws
@@ -185,9 +227,10 @@ static void tokenize(const char* source, std::vector<std::string>& tokens)
 extern "C"
 {
   // Compile source into flat bytecode buffer.
-  // Semantics (minimal Tier-0):
+  // Semantics (Tier-0 with arithmetic primitives):
   //   - For each integer token: emit V4_OP_LIT <imm32>
-  //   - Unknown non-integer tokens -> error
+  //   - For recognized primitives (+, -, *, /, MOD): emit their opcode
+  //   - Unknown tokens -> error
   //   - Always append V4_OP_RET at the end
   int v4front_compile(const char* source, V4FrontBuf* out_buf, char* err, size_t err_cap)
   {
@@ -201,14 +244,11 @@ extern "C"
     std::vector<std::string> tokens;
     tokenize(source, tokens);
 
-    // TODO (future): use prim_table.hpp to recognize non-immediate words
-    // and emit their opcodes. For now, only integer literals are accepted.
-
     for (size_t i = 0; i < tokens.size(); ++i)
     {
       const std::string& token = tokens[i];
 
-      // Try integer literal
+      // Try integer literal first
       int32_t immediate = 0;
       if (parse_int32(token.c_str(), immediate))
       {
@@ -221,14 +261,16 @@ extern "C"
         continue;
       }
 
-      // Future: add builtins here
-      //   uint8_t opcode;
-      //   if (lookup_primitive(token, opcode)) {
-      //     code.push_u8(opcode);
-      //     continue;
-      //   }
+      // Try primitive lookup
+      uint8_t opcode;
+      if (lookup_primitive(token, opcode))
+      {
+        if (!code.push_u8(opcode))
+          return set_error(err, err_cap, "out of memory (emit opcode)");
+        continue;
+      }
 
-      // Reject non-integers to keep behavior explicit
+      // Unknown token
       return set_error_with_token(err, err_cap, "unknown token: ", token.c_str());
     }
 

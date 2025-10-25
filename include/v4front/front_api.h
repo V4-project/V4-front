@@ -28,10 +28,11 @@ extern "C"
 
   // ---------------------------------------------------------------------------
   // v4front_compile
-  //  - Minimal Tier-0 frontend:
+  //  - Tier-0 frontend with arithmetic primitive support:
   //      * Each integer token emits:  [V4_OP_LIT, imm32_le]
+  //      * Recognized primitives (+, -, *, /, MOD): emit their opcode
   //      * Always appends:            [V4_OP_RET]
-  //      * Unknown non-integer token: error
+  //      * Unknown token: error
   //  - Accepted integer formats: decimal, 0x... (hex), 0... (oct) via strtol
   //    base=0
   //

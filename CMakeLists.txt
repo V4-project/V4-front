@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+  cmake_minimum_required(VERSION 3.20)
 project(v4front LANGUAGES C CXX)
 
 # ------------------------------------------------------------
@@ -83,7 +83,6 @@ add_library(v4front STATIC
 # Project's own public headers
 target_include_directories(v4front PUBLIC
   "${PROJECT_SOURCE_DIR}/include"
-  "${v4_src_SOURCE_DIR}/include"
 )
 
 # Link with V4 interface headers
@@ -100,6 +99,7 @@ target_compile_options(v4front PRIVATE
 # ------------------------------------------------------------
 enable_testing()
 
+# C++ tests with doctest (original literal tests)
 add_executable(v4front-tests
   tests/test_front.cpp
 )
@@ -126,7 +126,7 @@ target_compile_definitions(v4front-tests PRIVATE
 
 add_test(NAME v4front-tests COMMAND v4front-tests)
 
-# C smoke test (pure C)
+# C smoke test (pure C, original literal tests)
 add_executable(v4front-c-tests
   tests/test_c.c
 )
@@ -148,9 +148,29 @@ target_compile_options(v4front-c-tests PRIVATE
 
 add_test(NAME v4front-c-tests COMMAND v4front-c-tests)
 
+# Arithmetic operations test (new functionality)
+add_executable(v4front-arithmetic-tests
+  tests/test_arithmetic.cpp
+)
+
+target_include_directories(v4front-arithmetic-tests PRIVATE
+  ${PROJECT_SOURCE_DIR}/include
+)
+
+target_link_libraries(v4front-arithmetic-tests PRIVATE
+  v4front
+)
+
+target_compile_options(v4front-arithmetic-tests PRIVATE
+  -Wall -Wextra -Werror -Os
+  -fno-exceptions -fno-rtti
+)
+
+add_test(NAME v4front-arithmetic-tests COMMAND v4front-arithmetic-tests)
+
 # ------------------------------------------------------------
 # Usage:
-#   cmake -S . -B build -DV4_FETCH=ON \
-#         -DV4_GIT_REPO=${V4_GIT_REPO} -DV4_GIT_TAG=${V4_GIT_TAG}
+#   cmake -B build -DCMAKE_BUILD_TYPE=Release -DV4_INCLUDE_DIR=/path/to/V4/include
 #   cmake --build build -j
+#   ctest --test-dir build --output-on-failure
 # ------------------------------------------------------------
