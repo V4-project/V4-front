@@ -1,8 +1,8 @@
 #pragma once
-#include "v4front/compile.h"
-
 #include <cstddef>
 #include <cstdint>
+
+#include "v4front/compile.h"
 
 namespace v4front
 {
@@ -27,10 +27,10 @@ namespace v4front
  */
 class BytecodeBuffer
 {
-private:
+ private:
   V4FrontBuf buf_;
 
-public:
+ public:
   /**
    * @brief Construct an empty buffer.
    */
@@ -39,7 +39,10 @@ public:
   /**
    * @brief Destructor - automatically frees allocated bytecode.
    */
-  ~BytecodeBuffer() { v4front_free(&buf_); }
+  ~BytecodeBuffer()
+  {
+    v4front_free(&buf_);
+  }
 
   // Non-copyable (prevent double-free)
   BytecodeBuffer(const BytecodeBuffer&) = delete;
@@ -105,25 +108,37 @@ public:
    * @brief Get pointer to bytecode data.
    * @return Pointer to bytecode, or nullptr if empty.
    */
-  uint8_t* data() noexcept { return buf_.data; }
+  uint8_t* data() noexcept
+  {
+    return buf_.data;
+  }
 
   /**
    * @brief Get pointer to bytecode data (const version).
    * @return Const pointer to bytecode, or nullptr if empty.
    */
-  const uint8_t* data() const noexcept { return buf_.data; }
+  const uint8_t* data() const noexcept
+  {
+    return buf_.data;
+  }
 
   /**
    * @brief Get size of bytecode in bytes.
    * @return Size in bytes, or 0 if empty.
    */
-  size_t size() const noexcept { return buf_.size; }
+  size_t size() const noexcept
+  {
+    return buf_.size;
+  }
 
   /**
    * @brief Check if buffer is empty.
    * @return true if no bytecode is stored, false otherwise.
    */
-  bool empty() const noexcept { return buf_.data == nullptr || buf_.size == 0; }
+  bool empty() const noexcept
+  {
+    return buf_.data == nullptr || buf_.size == 0;
+  }
 
   /**
    * @brief Explicitly release ownership of the buffer.

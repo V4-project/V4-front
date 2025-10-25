@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 project(
   v4front
   VERSION 0.2.0
-  LANGUAGES CXX)
+  LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -92,9 +92,14 @@ if(V4FRONT_BUILD_TESTS)
   add_executable(test_arithmetic tests/test_arithmetic.cpp)
   target_link_libraries(test_arithmetic PRIVATE v4front)
 
+  # C Test
+  add_executable(test_c tests/test_c.c)
+  target_link_libraries(test_c PRIVATE v4front)
+  set_target_properties(test_c PROPERTIES LINKER_LANGUAGE CXX)
+
   if(MSVC)
     # Match the library flags so CI on Windows is consistent
-    foreach(tgt IN ITEMS test_errors test_disasm)
+    foreach(tgt IN ITEMS test_errors test_disasm test_c)
       target_compile_definitions(${tgt} PRIVATE _HAS_EXCEPTIONS=0)
       target_compile_options(${tgt} PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
     endforeach()
@@ -109,4 +114,5 @@ if(V4FRONT_BUILD_TESTS)
   add_test(NAME test_disasm COMMAND test_disasm)
   add_test(NAME test_compile COMMAND test_compile)
   add_test(NAME test_arithmetic COMMAND test_arithmetic)
+  add_test(NAME test_c COMMAND test_c)
 endif()

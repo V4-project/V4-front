@@ -8,7 +8,7 @@
 #include <string.h>
 #include <v4/opcodes.h>
 
-#include "v4front/front_api.h"
+#include "v4front/compile.h"
 
 static uint32_t rd32(const uint8_t* p)
 {
