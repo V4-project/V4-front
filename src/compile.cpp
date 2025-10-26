@@ -128,7 +128,9 @@ struct ControlFrame
   uint32_t jmp_patch_addr;  // Position of JMP offset to backpatch (for ELSE)
   bool has_else;            // Whether this IF has an ELSE clause
   // BEGIN control fields
-  uint32_t begin_addr;  // Position of BEGIN for backward jump (for UNTIL)
+  uint32_t begin_addr;        // Position of BEGIN for backward jump (for UNTIL/REPEAT)
+  uint32_t while_patch_addr;  // Position of JZ offset to backpatch (for WHILE)
+  bool has_while;             // Whether this BEGIN has a WHILE clause
 };
 
 // ---------------------------------------------------------------------------
@@ -203,6 +205,7 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       // Push control frame with BEGIN position
       control_stack[control_depth].type = BEGIN_CONTROL;
       control_stack[control_depth].begin_addr = bc_size;
+      control_stack[control_depth].has_while = false;
       control_depth++;
       continue;
     }
@@ -220,6 +223,11 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       {
         free(bc);
         return FrontErr::UntilWithoutBegin;
+      }
+      if (frame->has_while)
+      {
+        free(bc);
+        return FrontErr::UntilAfterWhile;
       }
 
       // Emit JZ opcode
@@ -239,6 +247,95 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
         free(bc);
         return err;
       }
+
+      // Pop control frame
+      control_depth--;
+      continue;
+    }
+    else if (str_eq_ci(token, "WHILE"))
+    {
+      // WHILE: emit JZ with placeholder offset (forward jump to after REPEAT)
+      if (control_depth <= 0)
+      {
+        free(bc);
+        return FrontErr::WhileWithoutBegin;
+      }
+
+      ControlFrame* frame = &control_stack[control_depth - 1];
+      if (frame->type != BEGIN_CONTROL)
+      {
+        free(bc);
+        return FrontErr::WhileWithoutBegin;
+      }
+      if (frame->has_while)
+      {
+        free(bc);
+        return FrontErr::DuplicateWhile;
+      }
+
+      // Emit JZ opcode
+      if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(v4::Op::JZ))) !=
+          FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Save position for backpatching and emit placeholder
+      uint32_t patch_pos = bc_size;
+      if ((err = append_i16_le(&bc, &bc_size, &bc_cap, 0)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Update control frame
+      frame->while_patch_addr = patch_pos;
+      frame->has_while = true;
+      continue;
+    }
+    else if (str_eq_ci(token, "REPEAT"))
+    {
+      // REPEAT: emit JMP to BEGIN, backpatch WHILE's JZ
+      if (control_depth <= 0)
+      {
+        free(bc);
+        return FrontErr::RepeatWithoutBegin;
+      }
+
+      ControlFrame* frame = &control_stack[control_depth - 1];
+      if (frame->type != BEGIN_CONTROL)
+      {
+        free(bc);
+        return FrontErr::RepeatWithoutBegin;
+      }
+      if (!frame->has_while)
+      {
+        free(bc);
+        return FrontErr::RepeatWithoutWhile;
+      }
+
+      // Emit JMP opcode
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::JMP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Calculate backward offset to BEGIN
+      uint32_t jmp_next_ip = bc_size + 2;
+      int16_t jmp_offset = (int16_t)(frame->begin_addr - jmp_next_ip);
+
+      if ((err = append_i16_le(&bc, &bc_size, &bc_cap, jmp_offset)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Backpatch WHILE's JZ to jump to current position
+      int16_t jz_offset = (int16_t)(bc_size - (frame->while_patch_addr + 2));
+      backpatch_i16_le(bc, frame->while_patch_addr, jz_offset);
 
       // Pop control frame
       control_depth--;
