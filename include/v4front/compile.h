@@ -49,6 +49,9 @@ extern "C"
     V4FRONT_UNTIL_AFTER_WHILE = -17,
     V4FRONT_AGAIN_WITHOUT_BEGIN = -18,
     V4FRONT_AGAIN_AFTER_WHILE = -19,
+    V4FRONT_LOOP_WITHOUT_DO = -20,
+    V4FRONT_PLOOP_WITHOUT_DO = -21,
+    V4FRONT_UNCLOSED_DO = -22
   };
 
   // ---------------------------------------------------------------------------

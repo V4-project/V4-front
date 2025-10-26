@@ -38,6 +38,9 @@ extern "C"
 #define ERR_TOO_MANY_LABELS V4FRONT_ERR_TooManyLabels
 #define ERR_UNDEFINED_LABEL V4FRONT_ERR_UndefinedLabel
 #define ERR_DUPLICATE_LABEL V4FRONT_ERR_DuplicateLabel
+#define ERR_LOOP_WITHOUT_DO V4FRONT_ERR_LoopWithoutDo
+#define ERR_PLOOP_WITHOUT_DO V4FRONT_ERR_PLoopWithoutDo
+#define ERR_UNCLOSED_DO V4FRONT_ERR_UnclosedDo
 
   /* Get error message string for an error code */
   const char* v4front_err_str(v4front_err_t err);

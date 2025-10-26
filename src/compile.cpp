@@ -117,7 +117,8 @@ static bool try_parse_int(const char* token, int32_t* out)
 enum ControlType
 {
   IF_CONTROL,
-  BEGIN_CONTROL
+  BEGIN_CONTROL,
+  DO_CONTROL
 };
 
 struct ControlFrame
@@ -131,6 +132,8 @@ struct ControlFrame
   uint32_t begin_addr;        // Position of BEGIN for backward jump (for UNTIL/REPEAT)
   uint32_t while_patch_addr;  // Position of JZ offset to backpatch (for WHILE)
   bool has_while;             // Whether this BEGIN has a WHILE clause
+  // DO control fields
+  uint32_t do_addr;  // Position after DO for backward jump (for LOOP/+LOOP)
 };
 
 // ---------------------------------------------------------------------------
@@ -206,6 +209,46 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       control_stack[control_depth].type = BEGIN_CONTROL;
       control_stack[control_depth].begin_addr = bc_size;
       control_stack[control_depth].has_while = false;
+      control_depth++;
+      continue;
+    }
+    else if (str_eq_ci(token, "DO"))
+    {
+      // DO: ( limit index -- R: -- limit index )
+      // Emit: SWAP >R >R
+      if (control_depth >= MAX_CONTROL_DEPTH)
+      {
+        free(bc);
+        return FrontErr::ControlDepthExceeded;
+      }
+
+      // SWAP: swap limit and index
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::SWAP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // >R: push limit to return stack
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // >R: push index to return stack
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Save loop start position
+      control_stack[control_depth].type = DO_CONTROL;
+      control_stack[control_depth].do_addr = bc_size;
       control_depth++;
       continue;
     }
@@ -384,6 +427,294 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       control_depth--;
       continue;
     }
+    else if (str_eq_ci(token, "LOOP"))
+    {
+      // LOOP: increment index and loop if index < limit
+      // Emit: R> 1+ R> OVER OVER < JZ [forward] SWAP >R >R JMP [backward] [target] DROP
+      // DROP
+      if (control_depth <= 0)
+      {
+        free(bc);
+        return FrontErr::LoopWithoutDo;
+      }
+
+      ControlFrame* frame = &control_stack[control_depth - 1];
+      if (frame->type != DO_CONTROL)
+      {
+        free(bc);
+        return FrontErr::LoopWithoutDo;
+      }
+
+      // R>: pop index from return stack
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // LIT 1
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::LIT))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_i32_le(&bc, &bc_size, &bc_cap, 1)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // ADD: increment index
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::ADD))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // R>: pop limit from return stack
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // OVER OVER: ( index limit -- index limit index limit )
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // LT: compare index < limit
+      if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(v4::Op::LT))) !=
+          FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // JZ: jump forward if done (exit loop)
+      if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(v4::Op::JZ))) !=
+          FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      uint32_t jz_patch_pos = bc_size;
+      if ((err = append_i16_le(&bc, &bc_size, &bc_cap, 0)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // SWAP: ( index limit -- limit index )
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::SWAP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // >R >R: push back to return stack
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // JMP: jump backward to loop start
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::JMP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      uint32_t jmp_next_ip = bc_size + 2;
+      int16_t jmp_offset = (int16_t)(frame->do_addr - jmp_next_ip);
+
+      if ((err = append_i16_le(&bc, &bc_size, &bc_cap, jmp_offset)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Backpatch JZ to exit point
+      int16_t jz_offset = (int16_t)(bc_size - (jz_patch_pos + 2));
+      backpatch_i16_le(bc, jz_patch_pos, jz_offset);
+
+      // DROP DROP: clean up index and limit
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      control_depth--;
+      continue;
+    }
+    else if (str_eq_ci(token, "+LOOP"))
+    {
+      // +LOOP: add n to index and loop if still in range
+      // Similar to LOOP but uses the value on stack instead of 1
+      if (control_depth <= 0)
+      {
+        free(bc);
+        return FrontErr::PLoopWithoutDo;
+      }
+
+      ControlFrame* frame = &control_stack[control_depth - 1];
+      if (frame->type != DO_CONTROL)
+      {
+        free(bc);
+        return FrontErr::PLoopWithoutDo;
+      }
+
+      // R>: pop index
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // ADD: add increment value to index
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::ADD))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // R>: pop limit
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // OVER OVER: duplicate for comparison
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // LT: compare
+      if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(v4::Op::LT))) !=
+          FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // JZ: exit if done
+      if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(v4::Op::JZ))) !=
+          FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      uint32_t jz_patch_pos = bc_size;
+      if ((err = append_i16_le(&bc, &bc_size, &bc_cap, 0)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // SWAP >R >R: push back
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::SWAP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // JMP: loop back
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::JMP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      uint32_t jmp_next_ip = bc_size + 2;
+      int16_t jmp_offset = (int16_t)(frame->do_addr - jmp_next_ip);
+
+      if ((err = append_i16_le(&bc, &bc_size, &bc_cap, jmp_offset)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Backpatch JZ
+      int16_t jz_offset = (int16_t)(bc_size - (jz_patch_pos + 2));
+      backpatch_i16_le(bc, jz_patch_pos, jz_offset);
+
+      // DROP DROP: cleanup
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      control_depth--;
+      continue;
+    }
     else if (str_eq_ci(token, "IF"))
     {
       // IF: emit JZ with placeholder offset, push to control stack
@@ -556,6 +887,106 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       opcode = v4::Op::RFETCH;
       found = true;
     }
+    else if (str_eq_ci(token, "I"))
+    {
+      // I: current loop index = R@
+      opcode = v4::Op::RFETCH;
+      found = true;
+    }
+    else if (str_eq_ci(token, "J"))
+    {
+      // J: outer loop index
+      // Emit: R> R> R> DUP >R >R >R
+
+      // R> R> R>: pop current loop (index, limit) and next index
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // DUP: copy the outer loop index
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::DUP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // >R >R >R: restore return stack
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      found = true;
+      continue;  // J emits multiple instructions, so continue
+    }
+    else if (str_eq_ci(token, "K"))
+    {
+      // K: outer outer loop index
+      // Emit: R> R> R> R> R> DUP >R >R >R >R >R
+
+      // R> x 5: pop two loops and next index
+      for (int i = 0; i < 5; i++)
+      {
+        if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                               static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+        {
+          free(bc);
+          return err;
+        }
+      }
+
+      // DUP: copy the outer outer loop index
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::DUP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // >R x 5: restore return stack
+      for (int i = 0; i < 5; i++)
+      {
+        if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                               static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+        {
+          free(bc);
+          return err;
+        }
+      }
+
+      found = true;
+      continue;  // K emits multiple instructions, so continue
+    }
 
     // Arithmetic operators (symbols are case-sensitive)
     else if (strcmp(token, "+") == 0)
@@ -658,6 +1089,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
     // Check what kind of unclosed structure
     if (control_stack[control_depth - 1].type == IF_CONTROL)
       return FrontErr::UnclosedIf;
+    else if (control_stack[control_depth - 1].type == DO_CONTROL)
+      return FrontErr::UnclosedDo;
     else
       return FrontErr::UnclosedBegin;
   }
