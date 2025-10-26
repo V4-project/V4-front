@@ -18,7 +18,7 @@ TEST_CASE("Bitwise operators compile correctly")
   SUBCASE("AND: 0xFF 0x0F AND")
   {
     v4front_err err = v4front_compile("0xFF 0x0F AND", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::AND));
     v4front_free(&buf);
   }
@@ -26,7 +26,7 @@ TEST_CASE("Bitwise operators compile correctly")
   SUBCASE("OR: 0xF0 0x0F OR")
   {
     v4front_err err = v4front_compile("0xF0 0x0F OR", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::OR));
     v4front_free(&buf);
   }
@@ -34,7 +34,7 @@ TEST_CASE("Bitwise operators compile correctly")
   SUBCASE("XOR: 0xFF 0xAA XOR")
   {
     v4front_err err = v4front_compile("0xFF 0xAA XOR", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::XOR));
     v4front_free(&buf);
   }
@@ -42,7 +42,7 @@ TEST_CASE("Bitwise operators compile correctly")
   SUBCASE("INVERT: 0xFF INVERT")
   {
     v4front_err err = v4front_compile("0xFF INVERT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     // Structure: LIT(5) + INVERT(1) + RET(1) = 7 bytes
     CHECK(buf.data[5] == static_cast<uint8_t>(Op::INVERT));
     v4front_free(&buf);
@@ -58,7 +58,7 @@ TEST_CASE("Complex bitwise expressions")
   {
     v4front_err err =
         v4front_compile("0xFF 0x0F AND 0xF0 OR", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     // Should compile successfully
     v4front_free(&buf);
   }
@@ -66,7 +66,7 @@ TEST_CASE("Complex bitwise expressions")
   SUBCASE("XOR with negative: -1 0xFFFF XOR")
   {
     v4front_err err = v4front_compile("-1 0xFFFF XOR", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::XOR));
     v4front_free(&buf);
   }
@@ -75,7 +75,7 @@ TEST_CASE("Complex bitwise expressions")
   {
     v4front_err err =
         v4front_compile("0xAAAA INVERT 0x5555 AND", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -88,7 +88,7 @@ TEST_CASE("Bitwise operators in bytecode structure")
   SUBCASE("Verify bytecode structure for: 12 7 AND")
   {
     v4front_err err = v4front_compile("12 7 AND", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure should be:
     // [0] = LIT, [1-4] = 12 (little-endian)
@@ -110,7 +110,7 @@ TEST_CASE("Bitwise operators in bytecode structure")
   SUBCASE("Verify bytecode structure for: 42 INVERT")
   {
     v4front_err err = v4front_compile("42 INVERT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure should be:
     // [0] = LIT, [1-4] = 42 (little-endian)
@@ -135,7 +135,7 @@ TEST_CASE("Bitwise with decimal and hexadecimal literals")
   SUBCASE("Decimal literals: 15 8 AND")
   {
     v4front_err err = v4front_compile("15 8 AND", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::AND));
     v4front_free(&buf);
   }
@@ -143,7 +143,7 @@ TEST_CASE("Bitwise with decimal and hexadecimal literals")
   SUBCASE("Mixed literals: 255 0xFF AND")
   {
     v4front_err err = v4front_compile("255 0xFF AND", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::AND));
     v4front_free(&buf);
   }
@@ -151,7 +151,7 @@ TEST_CASE("Bitwise with decimal and hexadecimal literals")
   SUBCASE("Hexadecimal only: 0xDEAD 0xBEEF OR")
   {
     v4front_err err = v4front_compile("0xDEAD 0xBEEF OR", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::OR));
     v4front_free(&buf);
   }
@@ -166,7 +166,7 @@ TEST_CASE("Practical bitwise operations")
   {
     v4front_err err =
         v4front_compile("0x12345678 0xFF AND", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::AND));
     v4front_free(&buf);
   }
@@ -174,7 +174,7 @@ TEST_CASE("Practical bitwise operations")
   SUBCASE("Setting bits: 0x00 0x80 OR (set bit 7)")
   {
     v4front_err err = v4front_compile("0x00 0x80 OR", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::OR));
     v4front_free(&buf);
   }
@@ -182,7 +182,7 @@ TEST_CASE("Practical bitwise operations")
   SUBCASE("Toggling bits: 0xFF 0xAA XOR")
   {
     v4front_err err = v4front_compile("0xFF 0xAA XOR", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::XOR));
     v4front_free(&buf);
   }
@@ -190,7 +190,7 @@ TEST_CASE("Practical bitwise operations")
   SUBCASE("Bitwise NOT: -1 INVERT (should give 0)")
   {
     v4front_err err = v4front_compile("-1 INVERT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[5] == static_cast<uint8_t>(Op::INVERT));
     v4front_free(&buf);
   }

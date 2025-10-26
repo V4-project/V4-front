@@ -25,7 +25,7 @@ TEST_CASE("Basic BEGIN/UNTIL structure")
   {
     v4front_err err =
         v4front_compile("5 BEGIN 1 - DUP UNTIL DROP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure:
     // Position  0: LIT 5       (5 bytes)
@@ -56,7 +56,7 @@ TEST_CASE("Basic BEGIN/UNTIL structure")
   SUBCASE("Simple loop: BEGIN DUP UNTIL")
   {
     v4front_err err = v4front_compile("BEGIN DUP UNTIL", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure:
     // Position 0: (BEGIN)  DUP  (1 byte)
@@ -83,7 +83,7 @@ TEST_CASE("Basic BEGIN/UNTIL structure")
   {
     v4front_err err =
         v4front_compile("10 BEGIN 1 - DUP 0 = UNTIL DROP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -98,7 +98,7 @@ TEST_CASE("BEGIN/UNTIL with various operations")
   {
     v4front_err err =
         v4front_compile("BEGIN 2 * DUP 100 > UNTIL", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -107,7 +107,7 @@ TEST_CASE("BEGIN/UNTIL with various operations")
   {
     v4front_err err =
         v4front_compile("BEGIN SWAP DUP UNTIL", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -116,7 +116,7 @@ TEST_CASE("BEGIN/UNTIL with various operations")
   {
     v4front_err err =
         v4front_compile("BEGIN 1 - DUP 0xF AND UNTIL", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -131,7 +131,7 @@ TEST_CASE("Nested BEGIN/UNTIL structures")
   {
     v4front_err err = v4front_compile("BEGIN BEGIN DUP UNTIL DROP DUP UNTIL", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -141,7 +141,7 @@ TEST_CASE("Nested BEGIN/UNTIL structures")
     v4front_err err =
         v4front_compile("BEGIN BEGIN BEGIN DUP UNTIL DROP DUP UNTIL DROP DUP UNTIL", &buf,
                         errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -156,7 +156,7 @@ TEST_CASE("IF inside BEGIN/UNTIL")
   {
     v4front_err err = v4front_compile("BEGIN DUP 5 > IF 1 - THEN DUP UNTIL", &buf, errmsg,
                                       sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -165,7 +165,7 @@ TEST_CASE("IF inside BEGIN/UNTIL")
   {
     v4front_err err = v4front_compile("BEGIN DUP 10 < IF 1 + ELSE 1 - THEN DUP 0 = UNTIL",
                                       &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -180,7 +180,7 @@ TEST_CASE("BEGIN/UNTIL inside IF")
   {
     v4front_err err =
         v4front_compile("1 IF BEGIN DUP UNTIL THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -189,7 +189,7 @@ TEST_CASE("BEGIN/UNTIL inside IF")
   {
     v4front_err err = v4front_compile("0 IF 42 ELSE BEGIN DUP UNTIL THEN", &buf, errmsg,
                                       sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -198,7 +198,7 @@ TEST_CASE("BEGIN/UNTIL inside IF")
   {
     v4front_err err = v4front_compile("1 IF BEGIN DUP UNTIL ELSE BEGIN DUP UNTIL THEN",
                                       &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -213,7 +213,7 @@ TEST_CASE("Multiple sequential BEGIN/UNTIL structures")
   {
     v4front_err err = v4front_compile("BEGIN DUP UNTIL DROP BEGIN DUP UNTIL", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -223,7 +223,7 @@ TEST_CASE("Multiple sequential BEGIN/UNTIL structures")
     v4front_err err =
         v4front_compile("BEGIN DUP UNTIL DROP BEGIN DUP UNTIL DROP BEGIN DUP UNTIL", &buf,
                         errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -237,14 +237,14 @@ TEST_CASE("Error cases: malformed BEGIN/UNTIL structures")
   SUBCASE("UNTIL without BEGIN")
   {
     v4front_err err = v4front_compile("10 DUP UNTIL", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNTIL_WITHOUT_BEGIN);
+    CHECK(err == FrontErr::UntilWithoutBegin);
     CHECK(strcmp(errmsg, "UNTIL without matching BEGIN") == 0);
   }
 
   SUBCASE("Unclosed BEGIN (missing UNTIL)")
   {
     v4front_err err = v4front_compile("BEGIN 10 20 +", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNCLOSED_BEGIN);
+    CHECK(err == FrontErr::UnclosedBegin);
     CHECK(strcmp(errmsg, "unclosed BEGIN structure") == 0);
   }
 
@@ -252,19 +252,19 @@ TEST_CASE("Error cases: malformed BEGIN/UNTIL structures")
   {
     v4front_err err =
         v4front_compile("BEGIN BEGIN DUP UNTIL DROP DUP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNCLOSED_BEGIN);
+    CHECK(err == FrontErr::UnclosedBegin);
   }
 
   SUBCASE("UNTIL for IF (wrong control type)")
   {
     v4front_err err = v4front_compile("1 IF 42 UNTIL", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNTIL_WITHOUT_BEGIN);
+    CHECK(err == FrontErr::UntilWithoutBegin);
   }
 
   SUBCASE("THEN for BEGIN (wrong control type)")
   {
     v4front_err err = v4front_compile("BEGIN 42 THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_THEN_WITHOUT_IF);
+    CHECK(err == FrontErr::ThenWithoutIf);
   }
 }
 
@@ -276,21 +276,21 @@ TEST_CASE("Case insensitive BEGIN/UNTIL keywords")
   SUBCASE("Lowercase: begin until")
   {
     v4front_err err = v4front_compile("begin dup until", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Mixed case: Begin Until")
   {
     v4front_err err = v4front_compile("Begin dup Until", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Uppercase: BEGIN UNTIL")
   {
     v4front_err err = v4front_compile("BEGIN DUP UNTIL", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -304,7 +304,7 @@ TEST_CASE("Practical BEGIN/UNTIL examples")
   {
     v4front_err err =
         v4front_compile("10 BEGIN 1 - DUP UNTIL DROP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -312,7 +312,7 @@ TEST_CASE("Practical BEGIN/UNTIL examples")
   {
     v4front_err err =
         v4front_compile("1 BEGIN 2 * DUP 100 >= UNTIL", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -320,7 +320,7 @@ TEST_CASE("Practical BEGIN/UNTIL examples")
   {
     v4front_err err = v4front_compile("1 BEGIN DUP 2 * SWAP DROP DUP 1000 > UNTIL", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -329,7 +329,7 @@ TEST_CASE("Practical BEGIN/UNTIL examples")
     v4front_err err =
         v4front_compile("BEGIN OVER OVER = UNTIL", &buf, errmsg,
                         sizeof(errmsg));  // Simplified, real GCD needs more logic
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -342,7 +342,7 @@ TEST_CASE("Backward jump offset calculation")
   SUBCASE("Verify backward jump offset")
   {
     v4front_err err = v4front_compile("BEGIN DUP UNTIL", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Position 0: (BEGIN) DUP (1 byte)
     // Position 1: JZ opcode   (1 byte)
@@ -384,7 +384,7 @@ TEST_CASE("Deep nesting limit with BEGIN/UNTIL")
     }
 
     v4front_err err = v4front_compile(code.c_str(), &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -402,7 +402,7 @@ TEST_CASE("Deep nesting limit with BEGIN/UNTIL")
     }
 
     v4front_err err = v4front_compile(code.c_str(), &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -420,6 +420,6 @@ TEST_CASE("Deep nesting limit with BEGIN/UNTIL")
     }
 
     v4front_err err = v4front_compile(code.c_str(), &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_CONTROL_DEPTH_EXCEEDED);
+    CHECK(err == FrontErr::ControlDepthExceeded);
   }
 }

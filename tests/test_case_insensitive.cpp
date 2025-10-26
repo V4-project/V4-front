@@ -18,7 +18,7 @@ TEST_CASE("Case-insensitive stack operators")
   SUBCASE("DUP in uppercase")
   {
     v4front_err err = v4front_compile("10 DUP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[5] == static_cast<uint8_t>(Op::DUP));
     v4front_free(&buf);
   }
@@ -26,7 +26,7 @@ TEST_CASE("Case-insensitive stack operators")
   SUBCASE("dup in lowercase")
   {
     v4front_err err = v4front_compile("10 dup", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[5] == static_cast<uint8_t>(Op::DUP));
     v4front_free(&buf);
   }
@@ -34,7 +34,7 @@ TEST_CASE("Case-insensitive stack operators")
   SUBCASE("Dup in mixed case")
   {
     v4front_err err = v4front_compile("10 Dup", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[5] == static_cast<uint8_t>(Op::DUP));
     v4front_free(&buf);
   }
@@ -44,15 +44,15 @@ TEST_CASE("Case-insensitive stack operators")
     v4front_err err;
 
     err = v4front_compile("10 DROP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
 
     err = v4front_compile("10 drop", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
 
     err = v4front_compile("10 Drop", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -61,12 +61,12 @@ TEST_CASE("Case-insensitive stack operators")
     v4front_err err;
 
     err = v4front_compile("10 20 SWAP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::SWAP));
     v4front_free(&buf);
 
     err = v4front_compile("10 20 swap", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::SWAP));
     v4front_free(&buf);
   }
@@ -76,12 +76,12 @@ TEST_CASE("Case-insensitive stack operators")
     v4front_err err;
 
     err = v4front_compile("10 20 OVER", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::OVER));
     v4front_free(&buf);
 
     err = v4front_compile("10 20 over", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::OVER));
     v4front_free(&buf);
   }
@@ -95,7 +95,7 @@ TEST_CASE("Case-insensitive arithmetic operators")
   SUBCASE("MOD in uppercase")
   {
     v4front_err err = v4front_compile("43 7 MOD", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::MOD));
     v4front_free(&buf);
   }
@@ -103,7 +103,7 @@ TEST_CASE("Case-insensitive arithmetic operators")
   SUBCASE("mod in lowercase")
   {
     v4front_err err = v4front_compile("43 7 mod", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::MOD));
     v4front_free(&buf);
   }
@@ -111,7 +111,7 @@ TEST_CASE("Case-insensitive arithmetic operators")
   SUBCASE("Mod in mixed case")
   {
     v4front_err err = v4front_compile("43 7 Mod", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::MOD));
     v4front_free(&buf);
   }
@@ -127,17 +127,17 @@ TEST_CASE("Case-insensitive bitwise operators")
     v4front_err err;
 
     err = v4front_compile("15 7 AND", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::AND));
     v4front_free(&buf);
 
     err = v4front_compile("15 7 and", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::AND));
     v4front_free(&buf);
 
     err = v4front_compile("15 7 And", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::AND));
     v4front_free(&buf);
   }
@@ -147,12 +147,12 @@ TEST_CASE("Case-insensitive bitwise operators")
     v4front_err err;
 
     err = v4front_compile("8 4 OR", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::OR));
     v4front_free(&buf);
 
     err = v4front_compile("8 4 or", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::OR));
     v4front_free(&buf);
   }
@@ -162,17 +162,17 @@ TEST_CASE("Case-insensitive bitwise operators")
     v4front_err err;
 
     err = v4front_compile("12 5 XOR", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::XOR));
     v4front_free(&buf);
 
     err = v4front_compile("12 5 xor", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::XOR));
     v4front_free(&buf);
 
     err = v4front_compile("12 5 Xor", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::XOR));
     v4front_free(&buf);
   }
@@ -182,17 +182,17 @@ TEST_CASE("Case-insensitive bitwise operators")
     v4front_err err;
 
     err = v4front_compile("42 INVERT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[5] == static_cast<uint8_t>(Op::INVERT));
     v4front_free(&buf);
 
     err = v4front_compile("42 invert", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[5] == static_cast<uint8_t>(Op::INVERT));
     v4front_free(&buf);
 
     err = v4front_compile("42 Invert", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[5] == static_cast<uint8_t>(Op::INVERT));
     v4front_free(&buf);
   }
@@ -210,19 +210,19 @@ TEST_CASE("Symbol operators remain case-sensitive (or case-irrelevant)")
     v4front_err err;
 
     err = v4front_compile("10 20 +", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
 
     err = v4front_compile("20 10 -", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
 
     err = v4front_compile("6 7 *", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
 
     err = v4front_compile("42 7 /", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -231,19 +231,19 @@ TEST_CASE("Symbol operators remain case-sensitive (or case-irrelevant)")
     v4front_err err;
 
     err = v4front_compile("5 5 =", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
 
     err = v4front_compile("5 3 <>", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
 
     err = v4front_compile("3 5 <", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
 
     err = v4front_compile("5 3 >", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -257,7 +257,7 @@ TEST_CASE("Complex expressions with mixed case")
   {
     v4front_err err =
         v4front_compile("10 dup 20 Swap over DROP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -265,7 +265,7 @@ TEST_CASE("Complex expressions with mixed case")
   {
     v4front_err err =
         v4front_compile("100 7 mod 2 * 3 + dup", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -273,7 +273,7 @@ TEST_CASE("Complex expressions with mixed case")
   {
     v4front_err err =
         v4front_compile("15 7 and 8 Or 3 xor", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }

@@ -18,7 +18,7 @@ TEST_CASE("Basic DO LOOP structure")
   SUBCASE("Simplest loop: 10 0 DO LOOP")
   {
     v4front_err err = v4front_compile("10 0 DO LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure should contain:
     // LIT 10, LIT 0, SWAP, TOR, TOR, ... LOOP body ..., DROP DROP, RET
@@ -34,7 +34,7 @@ TEST_CASE("Basic DO LOOP structure")
   SUBCASE("Loop with body: 10 0 DO I LOOP")
   {
     v4front_err err = v4front_compile("10 0 DO I LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Should contain RFETCH for I
     bool found_rfetch = false;
@@ -60,7 +60,7 @@ TEST_CASE("DO LOOP with +LOOP")
   SUBCASE("Basic +LOOP: 10 0 DO I 2 +LOOP")
   {
     v4front_err err = v4front_compile("10 0 DO I 2 +LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -68,7 +68,7 @@ TEST_CASE("DO LOOP with +LOOP")
   {
     v4front_err err =
         v4front_compile("10 0 DO I DUP +LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -81,14 +81,14 @@ TEST_CASE("Loop index access with I")
   SUBCASE("Using I in calculations: 10 0 DO I 2 * LOOP")
   {
     v4front_err err = v4front_compile("10 0 DO I 2 * LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Multiple I references: 10 0 DO I I + LOOP")
   {
     v4front_err err = v4front_compile("10 0 DO I I + LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -102,7 +102,7 @@ TEST_CASE("Nested DO LOOP structures")
   {
     v4front_err err =
         v4front_compile("3 0 DO 3 0 DO I LOOP LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -110,7 +110,7 @@ TEST_CASE("Nested DO LOOP structures")
   {
     v4front_err err =
         v4front_compile("3 0 DO 3 0 DO I J + LOOP LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Should contain code for J (3 FROMR, DUP, 3 TOR)
     v4front_free(&buf);
@@ -120,7 +120,7 @@ TEST_CASE("Nested DO LOOP structures")
   {
     v4front_err err = v4front_compile("2 0 DO 2 0 DO 2 0 DO I J K LOOP LOOP LOOP", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -133,7 +133,7 @@ TEST_CASE("DO LOOP with arithmetic in body")
   SUBCASE("Accumulator pattern: 0 10 0 DO I + LOOP")
   {
     v4front_err err = v4front_compile("0 10 0 DO I + LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -141,7 +141,7 @@ TEST_CASE("DO LOOP with arithmetic in body")
   {
     v4front_err err =
         v4front_compile("10 0 DO I DUP * LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -155,7 +155,7 @@ TEST_CASE("DO LOOP inside IF")
   {
     v4front_err err =
         v4front_compile("1 IF 10 0 DO I LOOP THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -163,7 +163,7 @@ TEST_CASE("DO LOOP inside IF")
   {
     v4front_err err =
         v4front_compile("0 IF 42 ELSE 10 0 DO I LOOP THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -177,7 +177,7 @@ TEST_CASE("IF inside DO LOOP")
   {
     v4front_err err =
         v4front_compile("10 0 DO I 5 > IF I THEN LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -185,7 +185,7 @@ TEST_CASE("IF inside DO LOOP")
   {
     v4front_err err = v4front_compile("10 0 DO I 5 < IF I ELSE 0 THEN LOOP", &buf, errmsg,
                                       sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -199,7 +199,7 @@ TEST_CASE("DO LOOP with BEGIN/UNTIL")
   {
     v4front_err err =
         v4front_compile("3 0 DO BEGIN I UNTIL LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -207,7 +207,7 @@ TEST_CASE("DO LOOP with BEGIN/UNTIL")
   {
     v4front_err err =
         v4front_compile("BEGIN 10 0 DO I LOOP DUP UNTIL", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -220,21 +220,21 @@ TEST_CASE("Error cases: malformed DO LOOP structures")
   SUBCASE("LOOP without DO")
   {
     v4front_err err = v4front_compile("10 20 + LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_LOOP_WITHOUT_DO);
+    CHECK(err == FrontErr::LoopWithoutDo);
     CHECK(strcmp(errmsg, "LOOP without matching DO") == 0);
   }
 
   SUBCASE("+LOOP without DO")
   {
     v4front_err err = v4front_compile("2 +LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_PLOOP_WITHOUT_DO);
+    CHECK(err == FrontErr::PLoopWithoutDo);
     CHECK(strcmp(errmsg, "+LOOP without matching DO") == 0);
   }
 
   SUBCASE("Unclosed DO (missing LOOP)")
   {
     v4front_err err = v4front_compile("10 0 DO I 2 *", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNCLOSED_DO);
+    CHECK(err == FrontErr::UnclosedDo);
     CHECK(strcmp(errmsg, "unclosed DO structure") == 0);
   }
 
@@ -242,13 +242,13 @@ TEST_CASE("Error cases: malformed DO LOOP structures")
   {
     v4front_err err =
         v4front_compile("3 0 DO 3 0 DO I LOOP DROP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNCLOSED_DO);
+    CHECK(err == FrontErr::UnclosedDo);
   }
 
   SUBCASE("LOOP for IF (wrong control type)")
   {
     v4front_err err = v4front_compile("1 IF 42 LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_LOOP_WITHOUT_DO);
+    CHECK(err == FrontErr::LoopWithoutDo);
   }
 }
 
@@ -260,21 +260,21 @@ TEST_CASE("Case insensitive DO/LOOP keywords")
   SUBCASE("Lowercase: do loop")
   {
     v4front_err err = v4front_compile("10 0 do i loop", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Mixed case: Do Loop")
   {
     v4front_err err = v4front_compile("10 0 Do I Loop", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Uppercase: DO LOOP")
   {
     v4front_err err = v4front_compile("10 0 DO I LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -287,14 +287,14 @@ TEST_CASE("Practical DO LOOP examples")
   SUBCASE("Sum 0 to 9: 0 10 0 DO I + LOOP")
   {
     v4front_err err = v4front_compile("0 10 0 DO I + LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Factorial skeleton: 1 5 1 DO I * LOOP")
   {
     v4front_err err = v4front_compile("1 5 1 DO I * LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -302,14 +302,14 @@ TEST_CASE("Practical DO LOOP examples")
   {
     v4front_err err =
         v4front_compile("10 0 DO 10 0 DO I J * LOOP LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Count by 2: 10 0 DO I 2 +LOOP")
   {
     v4front_err err = v4front_compile("10 0 DO I 2 +LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -322,14 +322,14 @@ TEST_CASE("Edge cases")
   SUBCASE("Empty loop body: 10 0 DO LOOP")
   {
     v4front_err err = v4front_compile("10 0 DO LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Loop with limit=index: 5 5 DO I LOOP")
   {
     v4front_err err = v4front_compile("5 5 DO I LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -337,7 +337,7 @@ TEST_CASE("Edge cases")
   {
     v4front_err err =
         v4front_compile("10 0 DO I LOOP 10 0 DO I LOOP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }

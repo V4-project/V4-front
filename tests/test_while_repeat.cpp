@@ -25,7 +25,7 @@ TEST_CASE("Basic BEGIN/WHILE/REPEAT structure")
   {
     v4front_err err = v4front_compile("10 BEGIN DUP 0 > WHILE 1 - REPEAT DROP", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure:
     // Position  0: LIT 10      (5 bytes)
@@ -67,7 +67,7 @@ TEST_CASE("Basic BEGIN/WHILE/REPEAT structure")
   {
     v4front_err err =
         v4front_compile("BEGIN DUP WHILE DROP REPEAT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -76,7 +76,7 @@ TEST_CASE("Basic BEGIN/WHILE/REPEAT structure")
   {
     v4front_err err =
         v4front_compile("BEGIN DUP 100 < WHILE 2 * REPEAT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -91,7 +91,7 @@ TEST_CASE("BEGIN/WHILE/REPEAT with various operations")
   {
     v4front_err err = v4front_compile("1 BEGIN DUP 100 < WHILE 2 * REPEAT", &buf, errmsg,
                                       sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -100,7 +100,7 @@ TEST_CASE("BEGIN/WHILE/REPEAT with various operations")
   {
     v4front_err err = v4front_compile("BEGIN OVER OVER = WHILE SWAP DROP REPEAT", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -109,7 +109,7 @@ TEST_CASE("BEGIN/WHILE/REPEAT with various operations")
   {
     v4front_err err = v4front_compile("BEGIN DUP 0xFF AND WHILE 1 - REPEAT", &buf, errmsg,
                                       sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -125,7 +125,7 @@ TEST_CASE("Nested BEGIN/WHILE/REPEAT structures")
     v4front_err err =
         v4front_compile("BEGIN DUP WHILE BEGIN DUP WHILE DROP REPEAT DROP REPEAT", &buf,
                         errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -136,7 +136,7 @@ TEST_CASE("Nested BEGIN/WHILE/REPEAT structures")
         "BEGIN DUP WHILE BEGIN DUP WHILE BEGIN DUP WHILE DROP REPEAT DROP REPEAT DROP "
         "REPEAT",
         &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -152,7 +152,7 @@ TEST_CASE("IF inside BEGIN/WHILE/REPEAT")
     v4front_err err =
         v4front_compile("BEGIN DUP 0 > WHILE DUP 5 > IF 2 - ELSE 1 - THEN REPEAT", &buf,
                         errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -161,7 +161,7 @@ TEST_CASE("IF inside BEGIN/WHILE/REPEAT")
   {
     v4front_err err = v4front_compile("BEGIN 1 IF DUP 0 > ELSE 0 THEN WHILE 1 - REPEAT",
                                       &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -176,7 +176,7 @@ TEST_CASE("BEGIN/WHILE/REPEAT inside IF")
   {
     v4front_err err = v4front_compile("1 IF BEGIN DUP WHILE DROP REPEAT THEN", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -185,7 +185,7 @@ TEST_CASE("BEGIN/WHILE/REPEAT inside IF")
   {
     v4front_err err = v4front_compile("0 IF 42 ELSE BEGIN DUP WHILE DROP REPEAT THEN",
                                       &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -200,7 +200,7 @@ TEST_CASE("Mixed UNTIL and WHILE/REPEAT")
   {
     v4front_err err = v4front_compile("BEGIN DUP WHILE DROP REPEAT BEGIN DUP UNTIL", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -209,7 +209,7 @@ TEST_CASE("Mixed UNTIL and WHILE/REPEAT")
   {
     v4front_err err = v4front_compile("BEGIN DUP UNTIL BEGIN DUP WHILE DROP REPEAT", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -218,7 +218,7 @@ TEST_CASE("Mixed UNTIL and WHILE/REPEAT")
   {
     v4front_err err = v4front_compile("BEGIN DUP WHILE BEGIN 1 - DUP UNTIL DROP REPEAT",
                                       &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -227,7 +227,7 @@ TEST_CASE("Mixed UNTIL and WHILE/REPEAT")
   {
     v4front_err err = v4front_compile("BEGIN BEGIN DUP WHILE DROP REPEAT DUP UNTIL", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -242,14 +242,14 @@ TEST_CASE("Error cases: malformed BEGIN/WHILE/REPEAT structures")
   {
     v4front_err err =
         v4front_compile("10 DUP WHILE DROP REPEAT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_WHILE_WITHOUT_BEGIN);
+    CHECK(err == FrontErr::WhileWithoutBegin);
     CHECK(strcmp(errmsg, "WHILE without matching BEGIN") == 0);
   }
 
   SUBCASE("REPEAT without BEGIN")
   {
     v4front_err err = v4front_compile("10 20 + REPEAT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_REPEAT_WITHOUT_BEGIN);
+    CHECK(err == FrontErr::RepeatWithoutBegin);
     CHECK(strcmp(errmsg, "REPEAT without matching BEGIN") == 0);
   }
 
@@ -257,7 +257,7 @@ TEST_CASE("Error cases: malformed BEGIN/WHILE/REPEAT structures")
   {
     v4front_err err =
         v4front_compile("BEGIN 10 20 + REPEAT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_REPEAT_WITHOUT_WHILE);
+    CHECK(err == FrontErr::RepeatWithoutWhile);
     CHECK(strcmp(errmsg, "REPEAT without matching WHILE") == 0);
   }
 
@@ -265,7 +265,7 @@ TEST_CASE("Error cases: malformed BEGIN/WHILE/REPEAT structures")
   {
     v4front_err err = v4front_compile("BEGIN DUP WHILE DUP WHILE DROP REPEAT", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_DUPLICATE_WHILE);
+    CHECK(err == FrontErr::DuplicateWhile);
     CHECK(strcmp(errmsg, "duplicate WHILE in BEGIN structure") == 0);
   }
 
@@ -273,7 +273,7 @@ TEST_CASE("Error cases: malformed BEGIN/WHILE/REPEAT structures")
   {
     v4front_err err =
         v4front_compile("BEGIN DUP WHILE 1 - UNTIL", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNTIL_AFTER_WHILE);
+    CHECK(err == FrontErr::UntilAfterWhile);
     CHECK(strcmp(errmsg, "UNTIL cannot be used after WHILE") == 0);
   }
 
@@ -281,14 +281,14 @@ TEST_CASE("Error cases: malformed BEGIN/WHILE/REPEAT structures")
   {
     v4front_err err =
         v4front_compile("BEGIN DUP WHILE 1 -", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNCLOSED_BEGIN);
+    CHECK(err == FrontErr::UnclosedBegin);
   }
 
   SUBCASE("WHILE for IF (wrong control type)")
   {
     v4front_err err =
         v4front_compile("1 IF 42 WHILE DROP REPEAT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_WHILE_WITHOUT_BEGIN);
+    CHECK(err == FrontErr::WhileWithoutBegin);
   }
 }
 
@@ -301,7 +301,7 @@ TEST_CASE("Case insensitive WHILE/REPEAT keywords")
   {
     v4front_err err =
         v4front_compile("begin dup while drop repeat", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -309,7 +309,7 @@ TEST_CASE("Case insensitive WHILE/REPEAT keywords")
   {
     v4front_err err =
         v4front_compile("Begin Dup While Drop Repeat", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -317,7 +317,7 @@ TEST_CASE("Case insensitive WHILE/REPEAT keywords")
   {
     v4front_err err =
         v4front_compile("BEGIN DUP WHILE DROP REPEAT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -331,7 +331,7 @@ TEST_CASE("Practical BEGIN/WHILE/REPEAT examples")
   {
     v4front_err err = v4front_compile("10 BEGIN DUP 0 > WHILE 1 - REPEAT DROP", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -339,7 +339,7 @@ TEST_CASE("Practical BEGIN/WHILE/REPEAT examples")
   {
     v4front_err err = v4front_compile("1 BEGIN DUP 100 < WHILE 2 * REPEAT", &buf, errmsg,
                                       sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -347,7 +347,7 @@ TEST_CASE("Practical BEGIN/WHILE/REPEAT examples")
   {
     v4front_err err = v4front_compile("BEGIN DUP WHILE SWAP OVER MOD REPEAT DROP", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -356,7 +356,7 @@ TEST_CASE("Practical BEGIN/WHILE/REPEAT examples")
     v4front_err err =
         v4front_compile("0 SWAP BEGIN DUP 0 > WHILE OVER + SWAP 1 - SWAP REPEAT DROP",
                         &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -370,7 +370,7 @@ TEST_CASE("Forward and backward jump offset verification")
   {
     v4front_err err =
         v4front_compile("BEGIN DUP WHILE DROP REPEAT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Position 0: (BEGIN) DUP (1 byte)
     // Position 1: JZ opcode   (1 byte)
@@ -408,7 +408,7 @@ TEST_CASE("Deep nesting with mixed control structures")
     v4front_err err =
         v4front_compile("1 IF BEGIN DUP WHILE BEGIN DUP UNTIL DROP REPEAT THEN", &buf,
                         errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -425,7 +425,7 @@ TEST_CASE("Deep nesting with mixed control structures")
     }
 
     v4front_err err = v4front_compile(code.c_str(), &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -439,7 +439,7 @@ TEST_CASE("Empty condition or body")
   {
     v4front_err err =
         v4front_compile("BEGIN 1 WHILE REPEAT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -447,7 +447,7 @@ TEST_CASE("Empty condition or body")
   {
     v4front_err err =
         v4front_compile("BEGIN DUP WHILE REPEAT", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }

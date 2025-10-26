@@ -3,7 +3,7 @@
 #include <cstring>
 
 #include "v4/opcodes.hpp"
-#include "v4front/compile.h"
+#include "v4front/compile.hpp"
 #include "v4front/errors.hpp"
 #include "vendor/doctest/doctest.h"
 
@@ -18,7 +18,7 @@ TEST_CASE("Compile >R (TOR)")
   SUBCASE("Simple: 42 >R")
   {
     v4front_err err = v4front_compile("42 >R", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure: LIT 42, TOR, RET
     CHECK(buf.data[0] == static_cast<uint8_t>(Op::LIT));
@@ -31,7 +31,7 @@ TEST_CASE("Compile >R (TOR)")
   SUBCASE("Case insensitive: 10 >r")
   {
     v4front_err err = v4front_compile("10 >r", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -44,7 +44,7 @@ TEST_CASE("Compile R> (FROMR)")
   SUBCASE("Simple: R>")
   {
     v4front_err err = v4front_compile("R>", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     CHECK(buf.data[0] == static_cast<uint8_t>(Op::FROMR));
     CHECK(buf.data[1] == static_cast<uint8_t>(Op::RET));
@@ -55,7 +55,7 @@ TEST_CASE("Compile R> (FROMR)")
   SUBCASE("Case insensitive: r>")
   {
     v4front_err err = v4front_compile("r>", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -68,7 +68,7 @@ TEST_CASE("Compile R@ (RFETCH)")
   SUBCASE("Simple: R@")
   {
     v4front_err err = v4front_compile("R@", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     CHECK(buf.data[0] == static_cast<uint8_t>(Op::RFETCH));
     CHECK(buf.data[1] == static_cast<uint8_t>(Op::RET));
@@ -79,7 +79,7 @@ TEST_CASE("Compile R@ (RFETCH)")
   SUBCASE("Case insensitive: r@")
   {
     v4front_err err = v4front_compile("r@", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -92,7 +92,7 @@ TEST_CASE("Return stack roundtrip")
   SUBCASE("Push and pop: 99 >R R>")
   {
     v4front_err err = v4front_compile("99 >R R>", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure: LIT 99, TOR, FROMR, RET
     CHECK(buf.data[0] == static_cast<uint8_t>(Op::LIT));
@@ -106,7 +106,7 @@ TEST_CASE("Return stack roundtrip")
   SUBCASE("Push and fetch: 123 >R R@")
   {
     v4front_err err = v4front_compile("123 >R R@", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     CHECK(buf.data[0] == static_cast<uint8_t>(Op::LIT));
     CHECK(buf.data[5] == static_cast<uint8_t>(Op::TOR));
@@ -125,14 +125,14 @@ TEST_CASE("Multiple return stack operations")
   {
     v4front_err err =
         v4front_compile("1 >R 2 >R 3 >R R> R> R>", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Multiple fetch: 42 >R R@ R@ R@")
   {
     v4front_err err = v4front_compile("42 >R R@ R@ R@", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -145,7 +145,7 @@ TEST_CASE("Return stack with arithmetic")
   SUBCASE("Temporary storage: 5 >R 10 20 + R> +")
   {
     v4front_err err = v4front_compile("5 >R 10 20 + R> +", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Verify opcodes are present
     int pos = 0;
@@ -175,14 +175,14 @@ TEST_CASE("Return stack with stack operations")
   SUBCASE("ROT using return stack: 1 2 3 >R SWAP R>")
   {
     v4front_err err = v4front_compile("1 2 3 >R SWAP R>", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("2DUP using return stack: DUP >R DUP R>")
   {
     v4front_err err = v4front_compile("DUP >R DUP R>", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -195,7 +195,7 @@ TEST_CASE("Return stack with control flow")
   SUBCASE("IF with return stack: 1 >R IF R> THEN")
   {
     v4front_err err = v4front_compile("1 >R 1 IF R> THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -203,7 +203,7 @@ TEST_CASE("Return stack with control flow")
   {
     v4front_err err =
         v4front_compile("5 >R BEGIN R@ UNTIL R>", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -216,7 +216,7 @@ TEST_CASE("Practical Forth patterns")
   SUBCASE("OVER implementation: >R DUP R> SWAP")
   {
     v4front_err err = v4front_compile(">R DUP R> SWAP", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -224,7 +224,7 @@ TEST_CASE("Practical Forth patterns")
   {
     // Simplified pick pattern
     v4front_err err = v4front_compile("SWAP >R SWAP R>", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -237,14 +237,14 @@ TEST_CASE("Edge cases")
   SUBCASE("Only return stack operations: >R R> >R R@")
   {
     v4front_err err = v4front_compile(">R R> >R R@", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Mixed case: >r R@ r>")
   {
     v4front_err err = v4front_compile(">r R@ r>", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }

@@ -8,6 +8,9 @@ extern "C"
 #include <stddef.h>
 #include <stdint.h>
 
+// Include unified error definitions
+#include "v4front/errors.h"
+
   // ---------------------------------------------------------------------------
   // V4FrontBuf
   //  - Holds dynamically allocated bytecode output.
@@ -23,42 +26,9 @@ extern "C"
   // v4front_err
   //  - Error code type (int).
   //  - 0 = success, negative = error.
+  //  - Now aliased to v4front_err_t for compatibility
   // ---------------------------------------------------------------------------
-  typedef int v4front_err;
-
-  // Error code constants
-  enum
-  {
-    V4FRONT_OK = 0,
-    V4FRONT_UNKNOWN_TOKEN = -1,
-    V4FRONT_INVALID_INTEGER = -2,
-    V4FRONT_OUT_OF_MEMORY = -3,
-    V4FRONT_BUFFER_TOO_SMALL = -4,
-    V4FRONT_EMPTY_INPUT = -5,
-    V4FRONT_CONTROL_DEPTH_EXCEEDED = -6,
-    V4FRONT_ELSE_WITHOUT_IF = -7,
-    V4FRONT_DUPLICATE_ELSE = -8,
-    V4FRONT_THEN_WITHOUT_IF = -9,
-    V4FRONT_UNCLOSED_IF = -10,
-    V4FRONT_UNTIL_WITHOUT_BEGIN = -11,
-    V4FRONT_UNCLOSED_BEGIN = -12,
-    V4FRONT_WHILE_WITHOUT_BEGIN = -13,
-    V4FRONT_DUPLICATE_WHILE = -14,
-    V4FRONT_REPEAT_WITHOUT_BEGIN = -15,
-    V4FRONT_REPEAT_WITHOUT_WHILE = -16,
-    V4FRONT_UNTIL_AFTER_WHILE = -17,
-    V4FRONT_AGAIN_WITHOUT_BEGIN = -18,
-    V4FRONT_AGAIN_AFTER_WHILE = -19,
-    V4FRONT_LOOP_WITHOUT_DO = -20,
-    V4FRONT_PLOOP_WITHOUT_DO = -21,
-    V4FRONT_UNCLOSED_DO = -22
-  };
-
-  // ---------------------------------------------------------------------------
-  // v4front_err_str
-  //  - Returns a string message for the given error code.
-  // ---------------------------------------------------------------------------
-  const char* v4front_err_str(v4front_err code);
+  typedef v4front_err_t v4front_err;
 
   // ---------------------------------------------------------------------------
   // v4front_compile

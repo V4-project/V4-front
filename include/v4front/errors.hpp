@@ -58,3 +58,49 @@ inline bool is_error(FrontErr e)
 }
 
 }  // namespace v4front
+
+// ---------------------------------------------------------------------------
+// C API interoperability helpers
+// These allow seamless use of FrontErr with C API functions
+// ---------------------------------------------------------------------------
+
+// Forward declare v4front_err_t from errors.h
+#ifndef V4FRONT_ERRORS_H_INCLUDED
+extern "C"
+{
+  typedef int v4front_err_t;
+  const char* v4front_err_str(v4front_err_t err);
+}
+#endif
+
+// C++ overload for v4front_err_str that accepts FrontErr
+inline const char* v4front_err_str(v4front::FrontErr err)
+{
+  return v4front_err_str(v4front::front_err_to_int(err));
+}
+
+// ---------------------------------------------------------------------------
+// Comparison operators for seamless C/C++ API interop
+// These allow direct comparison between v4front_err (int) and FrontErr
+// ---------------------------------------------------------------------------
+
+// Allow comparing v4front_err_t (int) with FrontErr enum
+inline bool operator==(v4front_err_t lhs, v4front::FrontErr rhs)
+{
+  return lhs == v4front::front_err_to_int(rhs);
+}
+
+inline bool operator==(v4front::FrontErr lhs, v4front_err_t rhs)
+{
+  return v4front::front_err_to_int(lhs) == rhs;
+}
+
+inline bool operator!=(v4front_err_t lhs, v4front::FrontErr rhs)
+{
+  return !(lhs == rhs);
+}
+
+inline bool operator!=(v4front::FrontErr lhs, v4front_err_t rhs)
+{
+  return !(lhs == rhs);
+}

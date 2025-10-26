@@ -24,7 +24,7 @@ TEST_CASE("Basic BEGIN/AGAIN structure")
   SUBCASE("Simplest infinite loop: BEGIN AGAIN")
   {
     v4front_err err = v4front_compile("BEGIN AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure:
     // Position 0: (BEGIN) JMP offset (3 bytes)
@@ -46,7 +46,7 @@ TEST_CASE("Basic BEGIN/AGAIN structure")
   SUBCASE("Simple loop with body: BEGIN DUP AGAIN")
   {
     v4front_err err = v4front_compile("BEGIN DUP AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure:
     // Position 0: (BEGIN) DUP (1 byte)
@@ -68,7 +68,7 @@ TEST_CASE("Basic BEGIN/AGAIN structure")
   {
     v4front_err err =
         v4front_compile("0 BEGIN 1 + DUP AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure:
     // Position  0: LIT 0       (5 bytes)
@@ -100,7 +100,7 @@ TEST_CASE("BEGIN/AGAIN with various operations")
   SUBCASE("With arithmetic: BEGIN 2 * AGAIN")
   {
     v4front_err err = v4front_compile("BEGIN 2 * AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -109,7 +109,7 @@ TEST_CASE("BEGIN/AGAIN with various operations")
   {
     v4front_err err =
         v4front_compile("BEGIN SWAP DUP OVER AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -118,7 +118,7 @@ TEST_CASE("BEGIN/AGAIN with various operations")
   {
     v4front_err err =
         v4front_compile("BEGIN DUP 100 > AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -127,7 +127,7 @@ TEST_CASE("BEGIN/AGAIN with various operations")
   {
     v4front_err err =
         v4front_compile("BEGIN 1 - DUP 0xFF AND AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -142,7 +142,7 @@ TEST_CASE("Nested BEGIN/AGAIN structures")
   {
     v4front_err err =
         v4front_compile("BEGIN BEGIN DUP AGAIN AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Inner AGAIN jumps to inner BEGIN
     // Outer AGAIN is unreachable
@@ -153,7 +153,7 @@ TEST_CASE("Nested BEGIN/AGAIN structures")
   {
     v4front_err err = v4front_compile("BEGIN BEGIN BEGIN DUP AGAIN AGAIN AGAIN", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -168,7 +168,7 @@ TEST_CASE("IF inside BEGIN/AGAIN")
   {
     v4front_err err =
         v4front_compile("BEGIN DUP 5 > IF 1 - THEN AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -177,7 +177,7 @@ TEST_CASE("IF inside BEGIN/AGAIN")
   {
     v4front_err err = v4front_compile("BEGIN DUP 10 < IF 1 + ELSE 1 - THEN AGAIN", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -192,7 +192,7 @@ TEST_CASE("BEGIN/AGAIN inside IF")
   {
     v4front_err err =
         v4front_compile("1 IF BEGIN DUP AGAIN THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // THEN is unreachable
     v4front_free(&buf);
@@ -202,7 +202,7 @@ TEST_CASE("BEGIN/AGAIN inside IF")
   {
     v4front_err err = v4front_compile("0 IF 42 ELSE BEGIN DUP AGAIN THEN", &buf, errmsg,
                                       sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -218,7 +218,7 @@ TEST_CASE("Multiple sequential BEGIN/AGAIN structures")
     // Note: The second BEGIN is unreachable because AGAIN never exits
     v4front_err err =
         v4front_compile("BEGIN DUP AGAIN BEGIN DUP AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -234,7 +234,7 @@ TEST_CASE("AGAIN with other loop types (sequential)")
     // First loop can exit, second is infinite
     v4front_err err =
         v4front_compile("BEGIN DUP UNTIL BEGIN DUP AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -243,7 +243,7 @@ TEST_CASE("AGAIN with other loop types (sequential)")
   {
     v4front_err err = v4front_compile("BEGIN DUP WHILE DROP REPEAT BEGIN DUP AGAIN", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -252,7 +252,7 @@ TEST_CASE("AGAIN with other loop types (sequential)")
   {
     v4front_err err =
         v4front_compile("BEGIN BEGIN 1 - DUP UNTIL AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -261,7 +261,7 @@ TEST_CASE("AGAIN with other loop types (sequential)")
   {
     v4front_err err = v4front_compile("BEGIN BEGIN DUP WHILE DROP REPEAT AGAIN", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -275,14 +275,14 @@ TEST_CASE("Error cases: malformed BEGIN/AGAIN structures")
   SUBCASE("AGAIN without BEGIN")
   {
     v4front_err err = v4front_compile("10 DUP AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_AGAIN_WITHOUT_BEGIN);
+    CHECK(err == FrontErr::AgainWithoutBegin);
     CHECK(strcmp(errmsg, "AGAIN without matching BEGIN") == 0);
   }
 
   SUBCASE("Unclosed BEGIN (missing AGAIN, UNTIL, or REPEAT)")
   {
     v4front_err err = v4front_compile("BEGIN 10 20 +", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNCLOSED_BEGIN);
+    CHECK(err == FrontErr::UnclosedBegin);
     CHECK(strcmp(errmsg, "unclosed BEGIN structure") == 0);
   }
 
@@ -290,14 +290,14 @@ TEST_CASE("Error cases: malformed BEGIN/AGAIN structures")
   {
     v4front_err err =
         v4front_compile("BEGIN DUP WHILE 1 - AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_AGAIN_AFTER_WHILE);
+    CHECK(err == FrontErr::AgainAfterWhile);
     CHECK(strcmp(errmsg, "AGAIN cannot be used after WHILE") == 0);
   }
 
   SUBCASE("AGAIN for IF (wrong control type)")
   {
     v4front_err err = v4front_compile("1 IF 42 AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_AGAIN_WITHOUT_BEGIN);
+    CHECK(err == FrontErr::AgainWithoutBegin);
   }
 }
 
@@ -309,21 +309,21 @@ TEST_CASE("Case insensitive AGAIN keyword")
   SUBCASE("Lowercase: begin again")
   {
     v4front_err err = v4front_compile("begin dup again", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Mixed case: Begin Again")
   {
     v4front_err err = v4front_compile("Begin dup Again", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Uppercase: BEGIN AGAIN")
   {
     v4front_err err = v4front_compile("BEGIN DUP AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -337,7 +337,7 @@ TEST_CASE("Practical BEGIN/AGAIN examples (conceptual)")
   {
     // Infinite event processing loop
     v4front_err err = v4front_compile("BEGIN DUP AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -345,7 +345,7 @@ TEST_CASE("Practical BEGIN/AGAIN examples (conceptual)")
   {
     v4front_err err = v4front_compile("0 BEGIN 1 + DUP 1000000 > IF DROP 0 THEN AGAIN",
                                       &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -354,7 +354,7 @@ TEST_CASE("Practical BEGIN/AGAIN examples (conceptual)")
     // Would use IF to dispatch to different states
     v4front_err err = v4front_compile("BEGIN DUP 1 = IF 42 ELSE 99 THEN DROP AGAIN", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -367,7 +367,7 @@ TEST_CASE("Backward jump offset verification")
   SUBCASE("Verify offset calculation")
   {
     v4front_err err = v4front_compile("BEGIN DUP AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Position 0: (BEGIN) DUP (1 byte)
     // Position 1: JMP opcode  (1 byte)
@@ -389,7 +389,7 @@ TEST_CASE("Backward jump offset verification")
   {
     v4front_err err =
         v4front_compile("0 BEGIN 1 + 2 * 3 - AGAIN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Calculate expected offset
     // Position 0: LIT 0 (5 bytes)
@@ -445,7 +445,7 @@ TEST_CASE("Deep nesting with AGAIN")
     }
 
     v4front_err err = v4front_compile(code.c_str(), &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -463,7 +463,7 @@ TEST_CASE("Deep nesting with AGAIN")
     }
 
     v4front_err err = v4front_compile(code.c_str(), &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }

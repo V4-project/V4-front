@@ -26,8 +26,9 @@ TEST_CASE("Error message retrieval")
 
 TEST_CASE("C API error string function")
 {
-  CHECK(strcmp(v4front_err_str(V4FRONT_OK), "ok") == 0);
-  CHECK(strcmp(v4front_err_str(V4FRONT_UNKNOWN_TOKEN), "unknown token") == 0);
+  // C++ overload allows passing FrontErr directly to v4front_err_str
+  CHECK(strcmp(v4front_err_str(FrontErr::OK), "ok") == 0);
+  CHECK(strcmp(v4front_err_str(FrontErr::UnknownToken), "unknown token") == 0);
 }
 
 TEST_CASE("Empty source compiles successfully")
@@ -37,7 +38,7 @@ TEST_CASE("Empty source compiles successfully")
 
   v4front_err err = v4front_compile("", &buf, errmsg, sizeof(errmsg));
 
-  CHECK(err == V4FRONT_OK);
+  CHECK(err == FrontErr::OK);
   CHECK(buf.size == 1);
   CHECK(buf.data[0] == V4_OP_RET);
 
@@ -51,7 +52,7 @@ TEST_CASE("Simple integer literal")
 
   v4front_err err = v4front_compile("42", &buf, errmsg, sizeof(errmsg));
 
-  CHECK(err == V4FRONT_OK);
+  CHECK(err == FrontErr::OK);
   CHECK(buf.size == 6);  // LIT + 4 bytes + RET
   CHECK(buf.data[0] == V4_OP_LIT);
   CHECK(buf.data[5] == V4_OP_RET);
@@ -67,7 +68,7 @@ TEST_CASE("Arithmetic operations compile correctly")
   SUBCASE("Addition: 10 20 +")
   {
     v4front_err err = v4front_compile("10 20 +", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[0] == V4_OP_LIT);  // 10
     CHECK(buf.data[5] == V4_OP_LIT);  // 20
     CHECK(buf.data[10] == V4_OP_ADD);
@@ -78,7 +79,7 @@ TEST_CASE("Arithmetic operations compile correctly")
   SUBCASE("Multiplication: 6 7 *")
   {
     v4front_err err = v4front_compile("6 7 *", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == V4_OP_MUL);
     v4front_free(&buf);
   }
@@ -86,7 +87,7 @@ TEST_CASE("Arithmetic operations compile correctly")
   SUBCASE("Division: 42 7 /")
   {
     v4front_err err = v4front_compile("42 7 /", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == V4_OP_DIV);
     v4front_free(&buf);
   }
@@ -94,7 +95,7 @@ TEST_CASE("Arithmetic operations compile correctly")
   SUBCASE("Modulus: 43 7 MOD")
   {
     v4front_err err = v4front_compile("43 7 MOD", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     CHECK(buf.data[10] == V4_OP_MOD);
     v4front_free(&buf);
   }
@@ -107,7 +108,7 @@ TEST_CASE("Unknown token returns proper error code")
 
   v4front_err err = v4front_compile("10 UNKNOWN 20", &buf, errmsg, sizeof(errmsg));
 
-  CHECK(err == V4FRONT_UNKNOWN_TOKEN);
+  CHECK(err == FrontErr::UnknownToken);
   CHECK(strcmp(errmsg, "unknown token") == 0);
 }
 
@@ -119,14 +120,14 @@ TEST_CASE("Error message buffer works correctly")
   SUBCASE("Error message is written")
   {
     v4front_err err = v4front_compile("invalid!", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNKNOWN_TOKEN);
+    CHECK(err == FrontErr::UnknownToken);
     CHECK(strlen(errmsg) > 0);
   }
 
   SUBCASE("NULL error buffer is safe")
   {
     v4front_err err = v4front_compile("invalid!", &buf, nullptr, 0);
-    CHECK(err == V4FRONT_UNKNOWN_TOKEN);
+    CHECK(err == FrontErr::UnknownToken);
   }
 }
 
@@ -137,7 +138,7 @@ TEST_CASE("v4front_compile_word behaves like v4front_compile")
 
   v4front_err err = v4front_compile_word("test", "10 20 +", &buf, errmsg, sizeof(errmsg));
 
-  CHECK(err == V4FRONT_OK);
+  CHECK(err == FrontErr::OK);
   CHECK(buf.size > 0);
 
   v4front_free(&buf);
@@ -151,14 +152,14 @@ TEST_CASE("Hex and negative integers")
   SUBCASE("Hexadecimal: 0xFF")
   {
     v4front_err err = v4front_compile("0xFF", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Negative: -42")
   {
     v4front_err err = v4front_compile("-42", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }

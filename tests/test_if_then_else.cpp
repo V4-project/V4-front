@@ -24,7 +24,7 @@ TEST_CASE("Basic IF/THEN structure")
   SUBCASE("Simple IF/THEN: 1 IF 42 THEN")
   {
     v4front_err err = v4front_compile("1 IF 42 THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure:
     // LIT 1, JZ offset, LIT 42, RET
@@ -44,7 +44,7 @@ TEST_CASE("Basic IF/THEN structure")
   SUBCASE("IF/THEN with comparison: 5 3 > IF 100 THEN")
   {
     v4front_err err = v4front_compile("5 3 > IF 100 THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure: LIT 5, LIT 3, GT, JZ offset, LIT 100, RET
     CHECK(buf.data[0] == static_cast<uint8_t>(Op::LIT));
@@ -58,7 +58,7 @@ TEST_CASE("Basic IF/THEN structure")
   SUBCASE("IF/THEN with zero condition: 0 IF DROP THEN")
   {
     v4front_err err = v4front_compile("0 IF DROP THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure: LIT 0, JZ offset, DROP, RET
     CHECK(buf.data[0] == static_cast<uint8_t>(Op::LIT));
@@ -78,7 +78,7 @@ TEST_CASE("IF/ELSE/THEN structure")
   {
     v4front_err err =
         v4front_compile("1 IF 42 ELSE 99 THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure:
     // Position  0: LIT 1       (5 bytes)
@@ -113,7 +113,7 @@ TEST_CASE("IF/ELSE/THEN structure")
   {
     v4front_err err =
         v4front_compile("5 3 < IF 10 ELSE 20 THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure: LIT 5, LIT 3, LT, JZ, LIT 10, JMP, LIT 20, RET
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::LT));
@@ -127,7 +127,7 @@ TEST_CASE("IF/ELSE/THEN structure")
   {
     v4front_err err =
         v4front_compile("1 IF 10 20 + ELSE 30 40 * THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -142,7 +142,7 @@ TEST_CASE("Nested IF structures")
   {
     v4front_err err =
         v4front_compile("1 IF 2 IF 42 THEN THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     // Structure: LIT 1, JZ outer_end, LIT 2, JZ inner_end, LIT 42, (inner_end:),
     // (outer_end:), RET
@@ -158,7 +158,7 @@ TEST_CASE("Nested IF structures")
   {
     v4front_err err = v4front_compile("1 IF 2 IF 10 ELSE 20 THEN ELSE 30 THEN", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -167,7 +167,7 @@ TEST_CASE("Nested IF structures")
   {
     v4front_err err =
         v4front_compile("1 IF 2 IF 3 IF 42 THEN THEN THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -182,7 +182,7 @@ TEST_CASE("IF with complex expressions")
   {
     v4front_err err =
         v4front_compile("10 5 > IF 100 200 + THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -191,7 +191,7 @@ TEST_CASE("IF with complex expressions")
   {
     v4front_err err =
         v4front_compile("1 IF DUP DROP SWAP THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -200,7 +200,7 @@ TEST_CASE("IF with complex expressions")
   {
     v4front_err err =
         v4front_compile("0xFF 0xAA AND IF 1 ELSE 0 THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -215,7 +215,7 @@ TEST_CASE("Multiple sequential IF structures")
   {
     v4front_err err =
         v4front_compile("1 IF 10 THEN 2 IF 20 THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -227,7 +227,7 @@ TEST_CASE("Multiple sequential IF structures")
     v4front_err err =
         v4front_compile("1 IF 10 ELSE 11 THEN 2 IF 20 ELSE 21 THEN 3 IF 30 ELSE 31 THEN",
                         &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
 
     v4front_free(&buf);
   }
@@ -241,35 +241,35 @@ TEST_CASE("Error cases: malformed IF structures")
   SUBCASE("ELSE without IF")
   {
     v4front_err err = v4front_compile("10 ELSE 20", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_ELSE_WITHOUT_IF);
+    CHECK(err == FrontErr::ElseWithoutIf);
     CHECK(strcmp(errmsg, "ELSE without matching IF") == 0);
   }
 
   SUBCASE("THEN without IF")
   {
     v4front_err err = v4front_compile("10 THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_THEN_WITHOUT_IF);
+    CHECK(err == FrontErr::ThenWithoutIf);
     CHECK(strcmp(errmsg, "THEN without matching IF") == 0);
   }
 
   SUBCASE("Unclosed IF (missing THEN)")
   {
     v4front_err err = v4front_compile("1 IF 42", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNCLOSED_IF);
+    CHECK(err == FrontErr::UnclosedIf);
     CHECK(strcmp(errmsg, "unclosed IF structure") == 0);
   }
 
   SUBCASE("Unclosed nested IF")
   {
     v4front_err err = v4front_compile("1 IF 2 IF 42 THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_UNCLOSED_IF);
+    CHECK(err == FrontErr::UnclosedIf);
   }
 
   SUBCASE("Duplicate ELSE")
   {
     v4front_err err =
         v4front_compile("1 IF 10 ELSE 20 ELSE 30 THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_DUPLICATE_ELSE);
+    CHECK(err == FrontErr::DuplicateElse);
     CHECK(strcmp(errmsg, "duplicate ELSE in IF structure") == 0);
   }
 
@@ -277,7 +277,7 @@ TEST_CASE("Error cases: malformed IF structures")
   {
     v4front_err err =
         v4front_compile("1 IF 10 THEN ELSE 20", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_ELSE_WITHOUT_IF);
+    CHECK(err == FrontErr::ElseWithoutIf);
   }
 }
 
@@ -289,29 +289,29 @@ TEST_CASE("Case insensitive control flow keywords")
   SUBCASE("Lowercase: if then else")
   {
     v4front_err err = v4front_compile("1 if 42 then", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
 
     err = v4front_compile("1 if 10 else 20 then", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Mixed case: If Then Else")
   {
     v4front_err err = v4front_compile("1 If 42 Then", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
 
     err = v4front_compile("1 If 10 Else 20 Then", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
   SUBCASE("Uppercase: IF THEN ELSE")
   {
     v4front_err err = v4front_compile("1 IF 42 THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -325,7 +325,7 @@ TEST_CASE("Practical IF examples")
   {
     v4front_err err =
         v4front_compile("DUP 0 < IF 0 SWAP - THEN", &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -333,7 +333,7 @@ TEST_CASE("Practical IF examples")
   {
     v4front_err err = v4front_compile("OVER OVER > IF DROP ELSE SWAP DROP THEN", &buf,
                                       errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -343,7 +343,7 @@ TEST_CASE("Practical IF examples")
     v4front_err err =
         v4front_compile("DUP 0 > IF DROP 1 ELSE DUP 0 < IF DROP -1 ELSE DROP 0 THEN THEN",
                         &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 }
@@ -368,7 +368,7 @@ TEST_CASE("Deep nesting limit")
     }
 
     v4front_err err = v4front_compile(code.c_str(), &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_OK);
+    CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
@@ -387,7 +387,7 @@ TEST_CASE("Deep nesting limit")
     }
 
     v4front_err err = v4front_compile(code.c_str(), &buf, errmsg, sizeof(errmsg));
-    CHECK(err == V4FRONT_CONTROL_DEPTH_EXCEEDED);
+    CHECK(err == FrontErr::ControlDepthExceeded);
     CHECK(strcmp(errmsg, "control structure nesting too deep") == 0);
   }
 }
