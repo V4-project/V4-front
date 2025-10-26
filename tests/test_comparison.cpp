@@ -1,9 +1,14 @@
+#define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstring>
 
-#include "v4/opcodes.h"
-#include "v4front/compile.h"
+#include "v4/opcodes.hpp"
+#include "v4front/compile.hpp"
+#include "v4front/errors.hpp"
 #include "vendor/doctest/doctest.h"
+
+using namespace v4front;
+using Op = v4::Op;
 
 TEST_CASE("Comparison operators compile correctly")
 {
@@ -14,7 +19,7 @@ TEST_CASE("Comparison operators compile correctly")
   {
     v4front_err err = v4front_compile("5 5 =", &buf, errmsg, sizeof(errmsg));
     CHECK(err == V4FRONT_OK);
-    CHECK(buf.data[10] == V4_OP_EQ);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::EQ));
     v4front_free(&buf);
   }
 
@@ -22,7 +27,7 @@ TEST_CASE("Comparison operators compile correctly")
   {
     v4front_err err = v4front_compile("5 5 ==", &buf, errmsg, sizeof(errmsg));
     CHECK(err == V4FRONT_OK);
-    CHECK(buf.data[10] == V4_OP_EQ);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::EQ));
     v4front_free(&buf);
   }
 
@@ -30,7 +35,7 @@ TEST_CASE("Comparison operators compile correctly")
   {
     v4front_err err = v4front_compile("5 3 <>", &buf, errmsg, sizeof(errmsg));
     CHECK(err == V4FRONT_OK);
-    CHECK(buf.data[10] == V4_OP_NE);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::NE));
     v4front_free(&buf);
   }
 
@@ -38,7 +43,7 @@ TEST_CASE("Comparison operators compile correctly")
   {
     v4front_err err = v4front_compile("5 3 !=", &buf, errmsg, sizeof(errmsg));
     CHECK(err == V4FRONT_OK);
-    CHECK(buf.data[10] == V4_OP_NE);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::NE));
     v4front_free(&buf);
   }
 
@@ -46,7 +51,7 @@ TEST_CASE("Comparison operators compile correctly")
   {
     v4front_err err = v4front_compile("3 5 <", &buf, errmsg, sizeof(errmsg));
     CHECK(err == V4FRONT_OK);
-    CHECK(buf.data[10] == V4_OP_LT);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::LT));
     v4front_free(&buf);
   }
 
@@ -54,7 +59,7 @@ TEST_CASE("Comparison operators compile correctly")
   {
     v4front_err err = v4front_compile("3 5 <=", &buf, errmsg, sizeof(errmsg));
     CHECK(err == V4FRONT_OK);
-    CHECK(buf.data[10] == V4_OP_LE);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::LE));
     v4front_free(&buf);
   }
 
@@ -62,7 +67,7 @@ TEST_CASE("Comparison operators compile correctly")
   {
     v4front_err err = v4front_compile("5 3 >", &buf, errmsg, sizeof(errmsg));
     CHECK(err == V4FRONT_OK);
-    CHECK(buf.data[10] == V4_OP_GT);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::GT));
     v4front_free(&buf);
   }
 
@@ -70,7 +75,7 @@ TEST_CASE("Comparison operators compile correctly")
   {
     v4front_err err = v4front_compile("5 3 >=", &buf, errmsg, sizeof(errmsg));
     CHECK(err == V4FRONT_OK);
-    CHECK(buf.data[10] == V4_OP_GE);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::GE));
     v4front_free(&buf);
   }
 }
@@ -92,7 +97,7 @@ TEST_CASE("Complex comparison expressions")
   {
     v4front_err err = v4front_compile("-5 0 <", &buf, errmsg, sizeof(errmsg));
     CHECK(err == V4FRONT_OK);
-    CHECK(buf.data[10] == V4_OP_LT);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::LT));
     v4front_free(&buf);
   }
 
@@ -100,7 +105,7 @@ TEST_CASE("Complex comparison expressions")
   {
     v4front_err err = v4front_compile("0xFF 255 =", &buf, errmsg, sizeof(errmsg));
     CHECK(err == V4FRONT_OK);
-    CHECK(buf.data[10] == V4_OP_EQ);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::EQ));
     v4front_free(&buf);
   }
 }
@@ -121,12 +126,12 @@ TEST_CASE("Comparison operators in bytecode structure")
     // [10] = EQ
     // [11] = RET
 
-    CHECK(buf.data[0] == V4_OP_LIT);
+    CHECK(buf.data[0] == static_cast<uint8_t>(Op::LIT));
     CHECK(buf.data[1] == 42);
-    CHECK(buf.data[5] == V4_OP_LIT);
+    CHECK(buf.data[5] == static_cast<uint8_t>(Op::LIT));
     CHECK(buf.data[6] == 42);
-    CHECK(buf.data[10] == V4_OP_EQ);
-    CHECK(buf.data[11] == V4_OP_RET);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::EQ));
+    CHECK(buf.data[11] == static_cast<uint8_t>(Op::RET));
     CHECK(buf.size == 12);
 
     v4front_free(&buf);

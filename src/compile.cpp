@@ -5,7 +5,7 @@
 #include <cstdlib>  // malloc, free, strtol
 #include <cstring>  // strcmp, strlen, strncpy
 
-#include "v4/opcodes.h"  // V4_OP_LIT, V4_OP_RET, etc.
+#include "v4/opcodes.hpp"  // v4::Op
 #include "v4front/errors.hpp"
 
 using namespace v4front;
@@ -105,7 +105,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
   if (!source || !*source)
   {
     // Empty input: just emit RET
-    if ((err = append_byte(&bc, &bc_size, &bc_cap, V4_OP_RET)) != FrontErr::OK)
+    if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(v4::Op::RET))) !=
+        FrontErr::OK)
     {
       free(bc);
       return err;
@@ -142,7 +143,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
     if (try_parse_int(token, &val))
     {
       // Emit: [LIT] [imm32_le]
-      if ((err = append_byte(&bc, &bc_size, &bc_cap, V4_OP_LIT)) != FrontErr::OK)
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::LIT))) != FrontErr::OK)
       {
         free(bc);
         return err;
@@ -155,38 +157,98 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       continue;
     }
 
-    // Try matching arithmetic operators
-    uint8_t opcode = 0;
+    // Try matching operators
+    v4::Op opcode = v4::Op::RET;  // placeholder
+    bool found = false;
+
+    // Arithmetic operators
     if (strcmp(token, "+") == 0)
-      opcode = V4_OP_ADD;
+    {
+      opcode = v4::Op::ADD;
+      found = true;
+    }
     else if (strcmp(token, "-") == 0)
-      opcode = V4_OP_SUB;
+    {
+      opcode = v4::Op::SUB;
+      found = true;
+    }
     else if (strcmp(token, "*") == 0)
-      opcode = V4_OP_MUL;
+    {
+      opcode = v4::Op::MUL;
+      found = true;
+    }
     else if (strcmp(token, "/") == 0)
-      opcode = V4_OP_DIV;
+    {
+      opcode = v4::Op::DIV;
+      found = true;
+    }
     else if (strcmp(token, "MOD") == 0)
-      opcode = V4_OP_MOD;
+    {
+      opcode = v4::Op::MOD;
+      found = true;
+    }
+    // Comparison operators
     else if (strcmp(token, "=") == 0 || strcmp(token, "==") == 0)
-      opcode = V4_OP_EQ;
+    {
+      opcode = v4::Op::EQ;
+      found = true;
+    }
     else if (strcmp(token, "<>") == 0 || strcmp(token, "!=") == 0)
-      opcode = V4_OP_NE;
+    {
+      opcode = v4::Op::NE;
+      found = true;
+    }
     else if (strcmp(token, "<") == 0)
-      opcode = V4_OP_LT;
+    {
+      opcode = v4::Op::LT;
+      found = true;
+    }
     else if (strcmp(token, "<=") == 0)
-      opcode = V4_OP_LE;
+    {
+      opcode = v4::Op::LE;
+      found = true;
+    }
     else if (strcmp(token, ">") == 0)
-      opcode = V4_OP_GT;
+    {
+      opcode = v4::Op::GT;
+      found = true;
+    }
     else if (strcmp(token, ">=") == 0)
-      opcode = V4_OP_GE;
-    else
+    {
+      opcode = v4::Op::GE;
+      found = true;
+    }
+    // Bitwise operators
+    else if (strcmp(token, "AND") == 0)
+    {
+      opcode = v4::Op::AND;
+      found = true;
+    }
+    else if (strcmp(token, "OR") == 0)
+    {
+      opcode = v4::Op::OR;
+      found = true;
+    }
+    else if (strcmp(token, "XOR") == 0)
+    {
+      opcode = v4::Op::XOR;
+      found = true;
+    }
+    else if (strcmp(token, "INVERT") == 0)
+    {
+      opcode = v4::Op::INVERT;
+      found = true;
+    }
+
+    if (!found)
     {
       // Unknown token
       free(bc);
       return FrontErr::UnknownToken;
     }
 
-    if ((err = append_byte(&bc, &bc_size, &bc_cap, opcode)) != FrontErr::OK)
+    if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(opcode))) !=
+        FrontErr::OK)
     {
       free(bc);
       return err;
@@ -194,7 +256,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
   }
 
   // Append RET
-  if ((err = append_byte(&bc, &bc_size, &bc_cap, V4_OP_RET)) != FrontErr::OK)
+  if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(v4::Op::RET))) !=
+      FrontErr::OK)
   {
     free(bc);
     return err;
