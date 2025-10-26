@@ -1,4 +1,4 @@
-#include "v4front/compile.h"
+#include "v4front/compile.hpp"
 
 #include <cassert>
 #include <cctype>
@@ -341,6 +341,49 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       control_depth--;
       continue;
     }
+    else if (str_eq_ci(token, "AGAIN"))
+    {
+      // AGAIN: emit JMP with backward offset to BEGIN (infinite loop)
+      if (control_depth <= 0)
+      {
+        free(bc);
+        return FrontErr::AgainWithoutBegin;
+      }
+
+      ControlFrame* frame = &control_stack[control_depth - 1];
+      if (frame->type != BEGIN_CONTROL)
+      {
+        free(bc);
+        return FrontErr::AgainWithoutBegin;
+      }
+      if (frame->has_while)
+      {
+        free(bc);
+        return FrontErr::AgainAfterWhile;
+      }
+
+      // Emit JMP opcode
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::JMP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Calculate backward offset: target - (current + 2)
+      uint32_t jmp_next_ip = bc_size + 2;
+      int16_t offset = (int16_t)(frame->begin_addr - jmp_next_ip);
+
+      if ((err = append_i16_le(&bc, &bc_size, &bc_cap, offset)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Pop control frame
+      control_depth--;
+      continue;
+    }
     else if (str_eq_ci(token, "IF"))
     {
       // IF: emit JZ with placeholder offset, push to control stack
@@ -602,12 +645,27 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       return FrontErr::UnclosedBegin;
   }
 
-  // Append RET
-  if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(v4::Op::RET))) !=
-      FrontErr::OK)
+  // Append RET only if the last instruction is not an unconditional jump
+  // (unconditional JMP makes following code unreachable)
+  bool needs_ret = true;
+  if (bc_size >= 3)
   {
-    free(bc);
-    return err;
+    uint8_t last_opcode = bc[bc_size - 3];
+    if (last_opcode == static_cast<uint8_t>(v4::Op::JMP))
+    {
+      // Last instruction is unconditional jump (from AGAIN or REPEAT) - no RET needed
+      needs_ret = false;
+    }
+  }
+
+  if (needs_ret)
+  {
+    if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(v4::Op::RET))) !=
+        FrontErr::OK)
+    {
+      free(bc);
+      return err;
+    }
   }
 
   out_buf->data = bc;
