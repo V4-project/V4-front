@@ -40,6 +40,8 @@ extern "C"
     V4FRONT_DUPLICATE_ELSE = -8,
     V4FRONT_THEN_WITHOUT_IF = -9,
     V4FRONT_UNCLOSED_IF = -10,
+    V4FRONT_UNTIL_WITHOUT_BEGIN = -11,
+    V4FRONT_UNCLOSED_BEGIN = -12,
   };
 
   // ---------------------------------------------------------------------------

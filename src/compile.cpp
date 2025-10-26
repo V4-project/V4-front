@@ -110,15 +110,25 @@ static bool try_parse_int(const char* token, int32_t* out)
 }
 
 // ---------------------------------------------------------------------------
-// Control flow stack for IF/THEN/ELSE backpatching
+// Control flow stack for IF/THEN/ELSE and BEGIN/UNTIL backpatching
 // ---------------------------------------------------------------------------
 #define MAX_CONTROL_DEPTH 32
 
+enum ControlType
+{
+  IF_CONTROL,
+  BEGIN_CONTROL
+};
+
 struct ControlFrame
 {
-  uint32_t jz_patch_addr;   // Position of JZ offset to backpatch
+  ControlType type;
+  // IF control fields
+  uint32_t jz_patch_addr;   // Position of JZ offset to backpatch (for IF)
   uint32_t jmp_patch_addr;  // Position of JMP offset to backpatch (for ELSE)
   bool has_else;            // Whether this IF has an ELSE clause
+  // BEGIN control fields
+  uint32_t begin_addr;  // Position of BEGIN for backward jump (for UNTIL)
 };
 
 // ---------------------------------------------------------------------------
@@ -181,7 +191,60 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
     token[token_len] = '\0';
 
     // Check for control flow keywords first
-    if (str_eq_ci(token, "IF"))
+    if (str_eq_ci(token, "BEGIN"))
+    {
+      // BEGIN: mark the current position for backward jump
+      if (control_depth >= MAX_CONTROL_DEPTH)
+      {
+        free(bc);
+        return FrontErr::ControlDepthExceeded;
+      }
+
+      // Push control frame with BEGIN position
+      control_stack[control_depth].type = BEGIN_CONTROL;
+      control_stack[control_depth].begin_addr = bc_size;
+      control_depth++;
+      continue;
+    }
+    else if (str_eq_ci(token, "UNTIL"))
+    {
+      // UNTIL: emit JZ with backward offset to BEGIN
+      if (control_depth <= 0)
+      {
+        free(bc);
+        return FrontErr::UntilWithoutBegin;
+      }
+
+      ControlFrame* frame = &control_stack[control_depth - 1];
+      if (frame->type != BEGIN_CONTROL)
+      {
+        free(bc);
+        return FrontErr::UntilWithoutBegin;
+      }
+
+      // Emit JZ opcode
+      if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(v4::Op::JZ))) !=
+          FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Calculate backward offset: target - (current + 2)
+      uint32_t jz_next_ip = bc_size + 2;
+      int16_t offset = (int16_t)(frame->begin_addr - jz_next_ip);
+
+      if ((err = append_i16_le(&bc, &bc_size, &bc_cap, offset)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Pop control frame
+      control_depth--;
+      continue;
+    }
+    else if (str_eq_ci(token, "IF"))
     {
       // IF: emit JZ with placeholder offset, push to control stack
       if (control_depth >= MAX_CONTROL_DEPTH)
@@ -207,6 +270,7 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       }
 
       // Push control frame
+      control_stack[control_depth].type = IF_CONTROL;
       control_stack[control_depth].jz_patch_addr = patch_pos;
       control_stack[control_depth].jmp_patch_addr = 0;
       control_stack[control_depth].has_else = false;
@@ -223,6 +287,11 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       }
 
       ControlFrame* frame = &control_stack[control_depth - 1];
+      if (frame->type != IF_CONTROL)
+      {
+        free(bc);
+        return FrontErr::ElseWithoutIf;
+      }
       if (frame->has_else)
       {
         free(bc);
@@ -263,8 +332,14 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
         return FrontErr::ThenWithoutIf;
       }
 
+      ControlFrame* frame = &control_stack[control_depth - 1];
+      if (frame->type != IF_CONTROL)
+      {
+        free(bc);
+        return FrontErr::ThenWithoutIf;
+      }
+
       control_depth--;
-      ControlFrame* frame = &control_stack[control_depth];
 
       if (frame->has_else)
       {
@@ -419,11 +494,15 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
     }
   }
 
-  // Check for unclosed IF/ELSE structures
+  // Check for unclosed control structures
   if (control_depth > 0)
   {
     free(bc);
-    return FrontErr::UnclosedIf;
+    // Check what kind of unclosed structure
+    if (control_stack[control_depth - 1].type == IF_CONTROL)
+      return FrontErr::UnclosedIf;
+    else
+      return FrontErr::UnclosedBegin;
   }
 
   // Append RET
