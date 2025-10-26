@@ -1,26 +1,19 @@
-/* V4-front error codes definition
- * 
- * Usage: Define V4FRONT_ERR(name, val, msg) macro before including this file
- * 
- * Error code convention:
- *   0           = success
- *   negative    = error
- * 
- * Format: V4FRONT_ERR(name, value, message)
- * 
- * For C++:   Use #define V4FRONT_ERR ERR to map to enum class FrontErr
- * For C API: Use directly as V4FRONT_ERR_name constants
- */
-
-V4FRONT_ERR(OK,              0,  "ok")
-V4FRONT_ERR(UnknownToken,   -1, "unknown token")
-V4FRONT_ERR(InvalidInteger, -2, "invalid integer format")
-V4FRONT_ERR(OutOfMemory,    -3, "out of memory")
-V4FRONT_ERR(BufferTooSmall, -4, "buffer too small")
-V4FRONT_ERR(EmptyInput,     -5, "empty input")
-V4FRONT_ERR(InvalidOpcode,  -6, "invalid opcode")
-V4FRONT_ERR(UnexpectedEOF,  -7, "unexpected end of file")
-V4FRONT_ERR(SyntaxError,    -8, "syntax error")
-V4FRONT_ERR(TooManyLabels,  -9, "too many labels")
-V4FRONT_ERR(UndefinedLabel, -10, "undefined label")
-V4FRONT_ERR(DuplicateLabel, -11, "duplicate label")
+// V4-front error codes definition
+// Usage: Define V4FRONT_ERR(name, val, msg) before including this file
+//
+// Error code convention:
+//   0           = success
+//   negative    = error
+//
+// name, value, message
+V4FRONT_ERR(OK,                     0,  "ok")
+V4FRONT_ERR(UnknownToken,          -1, "unknown token")
+V4FRONT_ERR(InvalidInteger,        -2, "invalid integer format")
+V4FRONT_ERR(OutOfMemory,           -3, "out of memory")
+V4FRONT_ERR(BufferTooSmall,        -4, "buffer too small")
+V4FRONT_ERR(EmptyInput,            -5, "empty input")
+V4FRONT_ERR(ControlDepthExceeded,  -6, "control structure nesting too deep")
+V4FRONT_ERR(ElseWithoutIf,         -7, "ELSE without matching IF")
+V4FRONT_ERR(DuplicateElse,         -8, "duplicate ELSE in IF structure")
+V4FRONT_ERR(ThenWithoutIf,         -9, "THEN without matching IF")
+V4FRONT_ERR(UnclosedIf,           -10, "unclosed IF structure")

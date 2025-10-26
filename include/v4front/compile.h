@@ -1,73 +1,59 @@
 #pragma once
-#include <stddef.h>  // size_t
-#include <stdint.h>  // uint8_t, uint32_t
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-  // ---------------------------------------------------------------------------
-  // Error code type
-  //  - Compatible with v4front::FrontErr enum in C++
-  //  - 0 = success, negative = error
-  // ---------------------------------------------------------------------------
-  typedef int v4front_err;
-
-  // Error codes (matching v4front::FrontErr)
-#define V4FRONT_OK 0
-#define V4FRONT_UNKNOWN_TOKEN -1
-#define V4FRONT_INVALID_INTEGER -2
-#define V4FRONT_OUT_OF_MEMORY -3
-#define V4FRONT_BUFFER_TOO_SMALL -4
-#define V4FRONT_EMPTY_INPUT -5
+#include <stddef.h>
+#include <stdint.h>
 
   // ---------------------------------------------------------------------------
-  // Public buffer type
-  //  - Ownership of `data` is transferred to the caller; free with
-  //    v4front_free().
-  //  - `size` is the number of valid bytes in `data`.
+  // V4FrontBuf
+  //  - Holds dynamically allocated bytecode output.
+  //  - The caller must call v4front_free() when done.
   // ---------------------------------------------------------------------------
-  typedef struct V4FrontBuf
+  typedef struct
   {
     uint8_t* data;
-    uint32_t size;
+    size_t size;
   } V4FrontBuf;
 
   // ---------------------------------------------------------------------------
-  // Error handling model (no exceptions)
-  //  - Functions return v4front_err: 0 on success; negative value on failure.
-  //  - When an error buffer (err, err_cap) is provided, a human-readable
-  //    message is written into it (NUL-terminated, truncated if necessary).
+  // v4front_err
+  //  - Error code type (int).
+  //  - 0 = success, negative = error.
   // ---------------------------------------------------------------------------
+  typedef int v4front_err;
+
+  // Error code constants
+  enum
+  {
+    V4FRONT_OK = 0,
+    V4FRONT_UNKNOWN_TOKEN = -1,
+    V4FRONT_INVALID_INTEGER = -2,
+    V4FRONT_OUT_OF_MEMORY = -3,
+    V4FRONT_BUFFER_TOO_SMALL = -4,
+    V4FRONT_EMPTY_INPUT = -5,
+    V4FRONT_CONTROL_DEPTH_EXCEEDED = -6,
+    V4FRONT_ELSE_WITHOUT_IF = -7,
+    V4FRONT_DUPLICATE_ELSE = -8,
+    V4FRONT_THEN_WITHOUT_IF = -9,
+    V4FRONT_UNCLOSED_IF = -10,
+  };
 
   // ---------------------------------------------------------------------------
   // v4front_err_str
-  //  - Returns a human-readable error message for a given error code.
-  //  - Returns "unknown error" for unrecognized codes.
+  //  - Returns a string message for the given error code.
   // ---------------------------------------------------------------------------
   const char* v4front_err_str(v4front_err code);
 
   // ---------------------------------------------------------------------------
   // v4front_compile
-  //  - Tier-0 frontend with arithmetic primitive support:
-  //      * Each integer token emits:  [V4_OP_LIT, imm32_le]
-  //      * Recognized primitives (+, -, *, /, MOD): emit their opcode
-  //      * Always appends:            [V4_OP_RET]
-  //      * Unknown token: error
-  //  - Accepted integer formats: decimal, 0x... (hex), 0... (oct) via strtol
-  //    base=0
-  //
-  //  Parameters:
-  //    source   : ASCII text containing whitespace-separated tokens (may be
-  //               NULL/empty)
-  //    out_buf  : output buffer; on success caller must free via
-  //               v4front_free()
-  //    err      : optional error message buffer (may be NULL)
-  //    err_cap  : capacity of `err` in bytes (0 allowed)
-  //
-  //  Returns:
-  //    v4front_err: 0 on success; negative error code on failure.
+  //  - Compiles a string of space-separated tokens into V4 bytecode.
+  //  - Returns 0 on success, negative on error.
+  //  - On success, out_buf->data points to allocated memory with bytecode.
+  //  - On error, writes a message to err (if err != NULL).
   // ---------------------------------------------------------------------------
   v4front_err v4front_compile(const char* source, V4FrontBuf* out_buf, char* err,
                               size_t err_cap);

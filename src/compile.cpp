@@ -1,47 +1,33 @@
-#include "v4front/compile.hpp"
+#include "v4front/compile.h"
 
 #include <cassert>
-#include <cctype>   // isspace, tolower
-#include <cstdlib>  // malloc, free, strtol
-#include <cstring>  // strcmp, strlen, strncpy
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
 
-#include "v4/opcodes.hpp"  // v4::Op
+#include "v4/opcodes.hpp"
 #include "v4front/errors.hpp"
 
 using namespace v4front;
 
 // ---------------------------------------------------------------------------
-// Internal helpers
+// Helper: case-insensitive string comparison
 // ---------------------------------------------------------------------------
-
-// Case-insensitive string comparison helper
 static bool str_eq_ci(const char* a, const char* b)
 {
   while (*a && *b)
   {
     if (tolower((unsigned char)*a) != tolower((unsigned char)*b))
       return false;
-    a++;
-    b++;
+    ++a;
+    ++b;
   }
   return *a == *b;
 }
 
-// Write an error message into the user-provided buffer
-static void write_error(char* err, size_t err_cap, FrontErr code)
-{
-  if (err && err_cap > 0)
-  {
-    const char* msg = front_err_str(code);
-    size_t len = strlen(msg);
-    if (len >= err_cap)
-      len = err_cap - 1;
-    memcpy(err, msg, len);
-    err[len] = '\0';
-  }
-}
-
-// Write a custom error message (for detailed errors)
+// ---------------------------------------------------------------------------
+// Helper: write error message to buffer
+// ---------------------------------------------------------------------------
 static void write_error_msg(char* err, size_t err_cap, const char* msg)
 {
   if (err && err_cap > 0)
@@ -54,7 +40,16 @@ static void write_error_msg(char* err, size_t err_cap, const char* msg)
   }
 }
 
-// Append a byte to a dynamically growing buffer
+static void write_error(char* err, size_t err_cap, FrontErr code)
+{
+  write_error_msg(err, err_cap, front_err_str(code));
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic bytecode buffer management
+// ---------------------------------------------------------------------------
+
+// Append a single byte to the bytecode buffer
 static FrontErr append_byte(uint8_t** buf, uint32_t* size, uint32_t* cap, uint8_t byte)
 {
   if (*size >= *cap)
@@ -67,6 +62,17 @@ static FrontErr append_byte(uint8_t** buf, uint32_t* size, uint32_t* cap, uint8_
     *cap = new_cap;
   }
   (*buf)[(*size)++] = byte;
+  return FrontErr::OK;
+}
+
+// Append a 16-bit integer in little-endian format
+static FrontErr append_i16_le(uint8_t** buf, uint32_t* size, uint32_t* cap, int16_t val)
+{
+  FrontErr err;
+  if ((err = append_byte(buf, size, cap, (uint8_t)(val & 0xFF))) != FrontErr::OK)
+    return err;
+  if ((err = append_byte(buf, size, cap, (uint8_t)((val >> 8) & 0xFF))) != FrontErr::OK)
+    return err;
   return FrontErr::OK;
 }
 
@@ -85,6 +91,13 @@ static FrontErr append_i32_le(uint8_t** buf, uint32_t* size, uint32_t* cap, int3
   return FrontErr::OK;
 }
 
+// Backpatch a 16-bit offset at a specific position
+static void backpatch_i16_le(uint8_t* buf, uint32_t pos, int16_t val)
+{
+  buf[pos] = (uint8_t)(val & 0xFF);
+  buf[pos + 1] = (uint8_t)((val >> 8) & 0xFF);
+}
+
 // Try parsing a token as an integer
 static bool try_parse_int(const char* token, int32_t* out)
 {
@@ -95,6 +108,18 @@ static bool try_parse_int(const char* token, int32_t* out)
   *out = (int32_t)val;
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// Control flow stack for IF/THEN/ELSE backpatching
+// ---------------------------------------------------------------------------
+#define MAX_CONTROL_DEPTH 32
+
+struct ControlFrame
+{
+  uint32_t jz_patch_addr;   // Position of JZ offset to backpatch
+  uint32_t jmp_patch_addr;  // Position of JMP offset to backpatch (for ELSE)
+  bool has_else;            // Whether this IF has an ELSE clause
+};
 
 // ---------------------------------------------------------------------------
 // Main compilation logic
@@ -113,6 +138,10 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
   uint32_t bc_size = 0;
   uint32_t bc_cap = 0;
   FrontErr err = FrontErr::OK;
+
+  // Control flow stack for IF/THEN/ELSE
+  ControlFrame control_stack[MAX_CONTROL_DEPTH];
+  int control_depth = 0;
 
   // Handle empty input
   if (!source || !*source)
@@ -150,6 +179,107 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       token_len = sizeof(token) - 1;
     memcpy(token, token_start, token_len);
     token[token_len] = '\0';
+
+    // Check for control flow keywords first
+    if (str_eq_ci(token, "IF"))
+    {
+      // IF: emit JZ with placeholder offset, push to control stack
+      if (control_depth >= MAX_CONTROL_DEPTH)
+      {
+        free(bc);
+        return FrontErr::ControlDepthExceeded;
+      }
+
+      // Emit JZ opcode
+      if ((err = append_byte(&bc, &bc_size, &bc_cap, static_cast<uint8_t>(v4::Op::JZ))) !=
+          FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Save position for backpatching and emit placeholder
+      uint32_t patch_pos = bc_size;
+      if ((err = append_i16_le(&bc, &bc_size, &bc_cap, 0)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Push control frame
+      control_stack[control_depth].jz_patch_addr = patch_pos;
+      control_stack[control_depth].jmp_patch_addr = 0;
+      control_stack[control_depth].has_else = false;
+      control_depth++;
+      continue;
+    }
+    else if (str_eq_ci(token, "ELSE"))
+    {
+      // ELSE: emit JMP, then backpatch JZ to jump past the JMP
+      if (control_depth <= 0)
+      {
+        free(bc);
+        return FrontErr::ElseWithoutIf;
+      }
+
+      ControlFrame* frame = &control_stack[control_depth - 1];
+      if (frame->has_else)
+      {
+        free(bc);
+        return FrontErr::DuplicateElse;
+      }
+
+      // Emit JMP with placeholder (to skip ELSE clause)
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::JMP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      uint32_t jmp_patch_pos = bc_size;
+      if ((err = append_i16_le(&bc, &bc_size, &bc_cap, 0)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Now backpatch JZ to jump to current position (start of ELSE clause)
+      // offset = current_pos - (jz_patch_addr + 2)
+      int16_t jz_offset = (int16_t)(bc_size - (frame->jz_patch_addr + 2));
+      backpatch_i16_le(bc, frame->jz_patch_addr, jz_offset);
+
+      // Update control frame
+      frame->jmp_patch_addr = jmp_patch_pos;
+      frame->has_else = true;
+      continue;
+    }
+    else if (str_eq_ci(token, "THEN"))
+    {
+      // THEN: backpatch the last IF or ELSE jump
+      if (control_depth <= 0)
+      {
+        free(bc);
+        return FrontErr::ThenWithoutIf;
+      }
+
+      control_depth--;
+      ControlFrame* frame = &control_stack[control_depth];
+
+      if (frame->has_else)
+      {
+        // Backpatch the JMP from ELSE
+        int16_t jmp_offset = (int16_t)(bc_size - (frame->jmp_patch_addr + 2));
+        backpatch_i16_le(bc, frame->jmp_patch_addr, jmp_offset);
+      }
+      else
+      {
+        // Backpatch the JZ from IF
+        int16_t jz_offset = (int16_t)(bc_size - (frame->jz_patch_addr + 2));
+        backpatch_i16_le(bc, frame->jz_patch_addr, jz_offset);
+      }
+      continue;
+    }
 
     // Try parsing as integer
     int32_t val;
@@ -287,6 +417,13 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       free(bc);
       return err;
     }
+  }
+
+  // Check for unclosed IF/ELSE structures
+  if (control_depth > 0)
+  {
+    free(bc);
+    return FrontErr::UnclosedIf;
   }
 
   // Append RET
