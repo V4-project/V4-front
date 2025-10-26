@@ -16,6 +16,7 @@ All notable additions are listed here.
   - Added support for comparison operations
   - Added support for bitwise operations
   - Added support for stack operations
+  - Added support for return stack operations
 
 - **Public API (`front_api.h`)**
   - Defined stable C ABI:

@@ -540,6 +540,23 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       opcode = v4::Op::OVER;
       found = true;
     }
+    // Return stack operators
+    else if (str_eq_ci(token, ">R"))
+    {
+      opcode = v4::Op::TOR;
+      found = true;
+    }
+    else if (str_eq_ci(token, "R>"))
+    {
+      opcode = v4::Op::FROMR;
+      found = true;
+    }
+    else if (str_eq_ci(token, "R@"))
+    {
+      opcode = v4::Op::RFETCH;
+      found = true;
+    }
+
     // Arithmetic operators (symbols are case-sensitive)
     else if (strcmp(token, "+") == 0)
     {
