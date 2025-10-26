@@ -1,7 +1,7 @@
 #include "v4front/compile.hpp"
 
 #include <cassert>
-#include <cctype>   // isspace
+#include <cctype>   // isspace, tolower
 #include <cstdlib>  // malloc, free, strtol
 #include <cstring>  // strcmp, strlen, strncpy
 
@@ -13,6 +13,19 @@ using namespace v4front;
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+// Case-insensitive string comparison helper
+static bool str_eq_ci(const char* a, const char* b)
+{
+  while (*a && *b)
+  {
+    if (tolower((unsigned char)*a) != tolower((unsigned char)*b))
+      return false;
+    a++;
+    b++;
+  }
+  return *a == *b;
+}
 
 // Write an error message into the user-provided buffer
 static void write_error(char* err, size_t err_cap, FrontErr code)
@@ -157,33 +170,33 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       continue;
     }
 
-    // Try matching operators
+    // Try matching operators (case-insensitive for word operators)
     v4::Op opcode = v4::Op::RET;  // placeholder
     bool found = false;
 
     // Stack operators
-    if (strcmp(token, "DUP") == 0)
+    if (str_eq_ci(token, "DUP"))
     {
       opcode = v4::Op::DUP;
       found = true;
     }
-    else if (strcmp(token, "DROP") == 0)
+    else if (str_eq_ci(token, "DROP"))
     {
       opcode = v4::Op::DROP;
       found = true;
     }
-    else if (strcmp(token, "SWAP") == 0)
+    else if (str_eq_ci(token, "SWAP"))
     {
       opcode = v4::Op::SWAP;
       found = true;
     }
-    else if (strcmp(token, "OVER") == 0)
+    else if (str_eq_ci(token, "OVER"))
     {
       opcode = v4::Op::OVER;
       found = true;
     }
-    // Arithmetic operators
-    if (strcmp(token, "+") == 0)
+    // Arithmetic operators (symbols are case-sensitive)
+    else if (strcmp(token, "+") == 0)
     {
       opcode = v4::Op::ADD;
       found = true;
@@ -203,12 +216,12 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       opcode = v4::Op::DIV;
       found = true;
     }
-    else if (strcmp(token, "MOD") == 0)
+    else if (str_eq_ci(token, "MOD"))
     {
       opcode = v4::Op::MOD;
       found = true;
     }
-    // Comparison operators
+    // Comparison operators (symbols are case-sensitive)
     else if (strcmp(token, "=") == 0 || strcmp(token, "==") == 0)
     {
       opcode = v4::Op::EQ;
@@ -240,22 +253,22 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       found = true;
     }
     // Bitwise operators
-    else if (strcmp(token, "AND") == 0)
+    else if (str_eq_ci(token, "AND"))
     {
       opcode = v4::Op::AND;
       found = true;
     }
-    else if (strcmp(token, "OR") == 0)
+    else if (str_eq_ci(token, "OR"))
     {
       opcode = v4::Op::OR;
       found = true;
     }
-    else if (strcmp(token, "XOR") == 0)
+    else if (str_eq_ci(token, "XOR"))
     {
       opcode = v4::Op::XOR;
       found = true;
     }
-    else if (strcmp(token, "INVERT") == 0)
+    else if (str_eq_ci(token, "INVERT"))
     {
       opcode = v4::Op::INVERT;
       found = true;
