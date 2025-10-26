@@ -40,6 +40,17 @@ static inline void append_i16(std::vector<uint8_t>& bc, int16_t v)
 }
 
 /**
+ * @brief Append a 32-bit little-endian immediate to a buffer.
+ */
+static inline void append_i32(std::vector<uint8_t>& bc, int32_t v)
+{
+  bc.push_back(static_cast<uint8_t>(v & 0xFF));
+  bc.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
+  bc.push_back(static_cast<uint8_t>((v >> 16) & 0xFF));
+  bc.push_back(static_cast<uint8_t>((v >> 24) & 0xFF));
+}
+
+/**
  * @brief Append a signed 8-bit immediate to a buffer.
  */
 static inline void append_i8(std::vector<uint8_t>& bc, int8_t v)
@@ -61,15 +72,15 @@ static inline void expect_contains_all(const std::string& line,
 }
 
 /**
- * @test Disassemble a simple sequence with IMM16 and NO_IMM.
+ * @test Disassemble a simple sequence with IMM32 and NO_IMM.
  * Bytecode: LIT 1234; DUP; ADD
  */
-TEST_CASE("disasm: LIT(I16) + DUP + ADD")
+TEST_CASE("disasm: LIT(I32) + DUP + ADD")
 {
   std::vector<uint8_t> bc;
   // LIT 1234
   bc.push_back(static_cast<uint8_t>(OP_LIT));
-  append_i16(bc, 1234);
+  append_i32(bc, 1234);
   // DUP
   bc.push_back(static_cast<uint8_t>(OP_DUP));
   // ADD
@@ -133,20 +144,22 @@ TEST_CASE("disasm: CALL(Idx16) and SYS(I8)")
 
 /**
  * @test Truncation handling: immediate operands cut off by end of buffer.
- * Expect markers like "<trunc-i16>" or "<trunc-rel16>".
+ * Expect markers like "<trunc-i32>" or "<trunc-rel16>".
  */
 TEST_CASE("disasm: truncated immediates")
 {
-  // Case 1: LIT imm16 with only 1 imm byte available
+  // Case 1: LIT imm32 with only 3 imm bytes available
   {
     std::vector<uint8_t> bc;
     bc.push_back(static_cast<uint8_t>(OP_LIT));
-    // push only the low byte, missing the high byte
+    // push only 3 bytes, missing the high byte
     bc.push_back(0x2A);
+    bc.push_back(0x00);
+    bc.push_back(0x00);
 
     auto lines = disasm_all(bc.data(), bc.size());
     REQUIRE(lines.size() == 1);
-    expect_contains_all(lines[0], {"LIT", "<trunc-i16>"});
+    expect_contains_all(lines[0], {"LIT", "<trunc-i32>"});
   }
 
   // Case 2: JMP rel16 with 0 imm bytes available
@@ -180,14 +193,14 @@ TEST_CASE("disasm: truncated immediates")
 
 /**
  * @test Multi-instruction stream: ensure PC advances by exact encoded size.
- * Sequence: LIT 42 (3 bytes) ; ADD (1) ; JMP -1 (3) ; RET (1)
+ * Sequence: LIT 42 (5 bytes) ; ADD (1) ; JMP -1 (3) ; RET (1)
  */
 TEST_CASE("disasm: PC advancing across mixed sizes")
 {
   std::vector<uint8_t> bc;
   // LIT 42
   bc.push_back(static_cast<uint8_t>(OP_LIT));
-  append_i16(bc, 42);
+  append_i32(bc, 42);
   // ADD
   bc.push_back(static_cast<uint8_t>(OP_ADD));
   // JMP -1
