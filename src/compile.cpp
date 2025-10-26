@@ -161,6 +161,27 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
     v4::Op opcode = v4::Op::RET;  // placeholder
     bool found = false;
 
+    // Stack operators
+    if (strcmp(token, "DUP") == 0)
+    {
+      opcode = v4::Op::DUP;
+      found = true;
+    }
+    else if (strcmp(token, "DROP") == 0)
+    {
+      opcode = v4::Op::DROP;
+      found = true;
+    }
+    else if (strcmp(token, "SWAP") == 0)
+    {
+      opcode = v4::Op::SWAP;
+      found = true;
+    }
+    else if (strcmp(token, "OVER") == 0)
+    {
+      opcode = v4::Op::OVER;
+      found = true;
+    }
     // Arithmetic operators
     if (strcmp(token, "+") == 0)
     {

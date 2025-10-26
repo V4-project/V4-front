@@ -15,6 +15,7 @@ All notable additions are listed here.
   - Added support for arithmetic operations
   - Added support for comparison operations
   - Added support for bitwise operations
+  - Added support for stack operations
 
 - **Public API (`front_api.h`)**
   - Defined stable C ABI:
@@ -36,6 +37,7 @@ All notable additions are listed here.
   - Added `test_arithmetic.cpp
   - Added `test_comparison.cpp
   - Added `test_bitwise.cpp
+  - Added `test_stack.cpp
   - Configured doctest to work under `-fno-exceptions` via  
     `DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS`.
   - All tests properly define doctest macros before including headers.
