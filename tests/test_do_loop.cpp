@@ -341,3 +341,128 @@ TEST_CASE("Edge cases")
     v4front_free(&buf);
   }
 }
+
+TEST_CASE("LEAVE: early loop exit")
+{
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("Basic LEAVE: 10 0 DO I 5 = IF LEAVE THEN LOOP")
+  {
+    v4front_err err =
+        v4front_compile("10 0 DO I 5 = IF LEAVE THEN LOOP", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    // Should contain FROMR, FROMR, DROP, DROP, JMP for LEAVE
+    bool found_leave_sequence = false;
+    for (size_t i = 0; i + 4 < buf.size; i++)
+    {
+      if (buf.data[i] == static_cast<uint8_t>(Op::FROMR) &&
+          buf.data[i + 1] == static_cast<uint8_t>(Op::FROMR) &&
+          buf.data[i + 2] == static_cast<uint8_t>(Op::DROP) &&
+          buf.data[i + 3] == static_cast<uint8_t>(Op::DROP) &&
+          buf.data[i + 4] == static_cast<uint8_t>(Op::JMP))
+      {
+        found_leave_sequence = true;
+        break;
+      }
+    }
+    CHECK(found_leave_sequence);
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("LEAVE with +LOOP: 100 0 DO I 50 > IF LEAVE THEN 10 +LOOP")
+  {
+    v4front_err err = v4front_compile("100 0 DO I 50 > IF LEAVE THEN 10 +LOOP", &buf, errmsg,
+                                      sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+
+  SUBCASE("Multiple LEAVE in same loop: 10 0 DO I 3 = IF LEAVE THEN I 7 = IF LEAVE THEN LOOP")
+  {
+    v4front_err err = v4front_compile(
+        "10 0 DO I 3 = IF LEAVE THEN I 7 = IF LEAVE THEN LOOP", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+
+  SUBCASE("LEAVE in nested loop (inner): 3 0 DO 3 0 DO I 1 = IF LEAVE THEN LOOP LOOP")
+  {
+    v4front_err err = v4front_compile("3 0 DO 3 0 DO I 1 = IF LEAVE THEN LOOP LOOP", &buf,
+                                      errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+
+  SUBCASE("LEAVE with ELSE: 10 0 DO I 5 = IF LEAVE ELSE I THEN LOOP")
+  {
+    v4front_err err =
+        v4front_compile("10 0 DO I 5 = IF LEAVE ELSE I THEN LOOP", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+
+  SUBCASE("Unconditional LEAVE: 10 0 DO LEAVE LOOP")
+  {
+    v4front_err err = v4front_compile("10 0 DO LEAVE LOOP", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+}
+
+TEST_CASE("LEAVE error cases")
+{
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("LEAVE without DO")
+  {
+    v4front_err err = v4front_compile("10 20 + LEAVE", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::LeaveWithoutDo);
+    CHECK(strcmp(errmsg, "LEAVE without matching DO") == 0);
+  }
+
+  SUBCASE("LEAVE in BEGIN loop (not allowed)")
+  {
+    v4front_err err = v4front_compile("BEGIN DUP LEAVE UNTIL", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::LeaveWithoutDo);
+  }
+
+  SUBCASE("LEAVE in IF without DO")
+  {
+    v4front_err err = v4front_compile("1 IF LEAVE THEN", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::LeaveWithoutDo);
+  }
+}
+
+TEST_CASE("LEAVE case insensitivity")
+{
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("Lowercase: leave")
+  {
+    v4front_err err = v4front_compile("10 0 do i 5 = if leave then loop", &buf, errmsg,
+                                      sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+
+  SUBCASE("Mixed case: Leave")
+  {
+    v4front_err err =
+        v4front_compile("10 0 DO I 5 = IF Leave THEN LOOP", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+
+  SUBCASE("Uppercase: LEAVE")
+  {
+    v4front_err err =
+        v4front_compile("10 0 DO I 5 = IF LEAVE THEN LOOP", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+}

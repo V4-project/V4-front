@@ -113,6 +113,7 @@ static bool try_parse_int(const char* token, int32_t* out)
 // Control flow stack for IF/THEN/ELSE and BEGIN/UNTIL backpatching
 // ---------------------------------------------------------------------------
 #define MAX_CONTROL_DEPTH 32
+#define MAX_LEAVE_DEPTH 8
 
 enum ControlType
 {
@@ -133,7 +134,9 @@ struct ControlFrame
   uint32_t while_patch_addr;  // Position of JZ offset to backpatch (for WHILE)
   bool has_while;             // Whether this BEGIN has a WHILE clause
   // DO control fields
-  uint32_t do_addr;  // Position after DO for backward jump (for LOOP/+LOOP)
+  uint32_t do_addr;                          // Position after DO for backward jump (for LOOP/+LOOP)
+  uint32_t leave_patch_addrs[MAX_LEAVE_DEPTH];  // Positions of JMP offsets to backpatch (for LEAVE)
+  int leave_count;                           // Number of LEAVE statements in this DO loop
 };
 
 // ---------------------------------------------------------------------------
@@ -249,6 +252,7 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       // Save loop start position
       control_stack[control_depth].type = DO_CONTROL;
       control_stack[control_depth].do_addr = bc_size;
+      control_stack[control_depth].leave_count = 0;
       control_depth++;
       continue;
     }
@@ -427,6 +431,96 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       control_depth--;
       continue;
     }
+    else if (str_eq_ci(token, "LEAVE"))
+    {
+      // LEAVE: exit the current DO loop early
+      // Emit: R> R> DROP DROP JMP [forward]
+      if (control_depth <= 0)
+      {
+        free(bc);
+        return FrontErr::LeaveWithoutDo;
+      }
+
+      // Find the innermost DO control frame
+      int do_frame_idx = -1;
+      for (int i = control_depth - 1; i >= 0; i--)
+      {
+        if (control_stack[i].type == DO_CONTROL)
+        {
+          do_frame_idx = i;
+          break;
+        }
+      }
+
+      if (do_frame_idx < 0)
+      {
+        free(bc);
+        return FrontErr::LeaveWithoutDo;
+      }
+
+      ControlFrame* frame = &control_stack[do_frame_idx];
+
+      // Check if we have space for another LEAVE
+      if (frame->leave_count >= MAX_LEAVE_DEPTH)
+      {
+        free(bc);
+        return FrontErr::LeaveDepthExceeded;
+      }
+
+      // R>: pop index from return stack
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // R>: pop limit from return stack
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // DROP: discard index
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // DROP: discard limit
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // JMP: jump to loop exit (to be backpatched)
+      if ((err = append_byte(&bc, &bc_size, &bc_cap,
+                             static_cast<uint8_t>(v4::Op::JMP))) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Save patch position and emit placeholder
+      uint32_t patch_pos = bc_size;
+      if ((err = append_i16_le(&bc, &bc_size, &bc_cap, 0)) != FrontErr::OK)
+      {
+        free(bc);
+        return err;
+      }
+
+      // Record this LEAVE for backpatching
+      frame->leave_patch_addrs[frame->leave_count] = patch_pos;
+      frame->leave_count++;
+
+      continue;
+    }
     else if (str_eq_ci(token, "LOOP"))
     {
       // LOOP: increment index and loop if index < limit
@@ -576,6 +670,13 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
         return err;
       }
 
+      // Backpatch all LEAVE jumps to exit point (current position)
+      for (int i = 0; i < frame->leave_count; i++)
+      {
+        int16_t leave_offset = (int16_t)(bc_size - (frame->leave_patch_addrs[i] + 2));
+        backpatch_i16_le(bc, frame->leave_patch_addrs[i], leave_offset);
+      }
+
       control_depth--;
       continue;
     }
@@ -710,6 +811,13 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       {
         free(bc);
         return err;
+      }
+
+      // Backpatch all LEAVE jumps to exit point (current position)
+      for (int i = 0; i < frame->leave_count; i++)
+      {
+        int16_t leave_offset = (int16_t)(bc_size - (frame->leave_patch_addrs[i] + 2));
+        backpatch_i16_le(bc, frame->leave_patch_addrs[i], leave_offset);
       }
 
       control_depth--;
