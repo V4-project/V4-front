@@ -122,20 +122,42 @@ static bool try_parse_int(const char* token, int32_t* out)
 }
 
 // ---------------------------------------------------------------------------
-// Control flow stack for IF/THEN/ELSE and BEGIN/UNTIL backpatching
+// Compilation limits (can be overridden at compile time with -D flags)
 // ---------------------------------------------------------------------------
+
+// Maximum nesting depth for control structures (IF/THEN/ELSE, BEGIN/UNTIL, DO/LOOP)
+#ifndef MAX_CONTROL_DEPTH
 #define MAX_CONTROL_DEPTH 32
+#endif
+
+// Maximum nesting depth for LEAVE statements within DO loops
+#ifndef MAX_LEAVE_DEPTH
 #define MAX_LEAVE_DEPTH 8
+#endif
+
+// Maximum number of word definitions
+#ifndef MAX_WORDS
 #define MAX_WORDS 256
+#endif
+
+// Maximum length of word names (including null terminator)
+#ifndef MAX_WORD_NAME_LEN
+#define MAX_WORD_NAME_LEN 64
+#endif
+
+// Maximum length of tokens (including null terminator)
+#ifndef MAX_TOKEN_LEN
+#define MAX_TOKEN_LEN 256
+#endif
 
 // ---------------------------------------------------------------------------
 // Word definition entry (during compilation)
 // ---------------------------------------------------------------------------
 struct WordDefEntry
 {
-  char name[64];      // Word name
-  uint8_t* code;      // Bytecode for this word
-  uint32_t code_len;  // Length of bytecode
+  char name[MAX_WORD_NAME_LEN];  // Word name
+  uint8_t* code;                 // Bytecode for this word
+  uint32_t code_len;             // Length of bytecode
 };
 
 enum ControlType
@@ -204,7 +226,7 @@ static FrontErr handle_colon_start(const char** p, bool* in_definition,
     (*p)++;
   size_t name_len = *p - name_start;
 
-  if (name_len == 0 || name_len >= 64)  // 64 is sizeof(current_word_name)
+  if (name_len == 0 || name_len >= MAX_WORD_NAME_LEN)
     return FrontErr::ColonWithoutName;
 
   memcpy(current_word_name, name_start, name_len);
@@ -256,8 +278,8 @@ static FrontErr handle_semicolon_end(bool* in_definition, char* current_word_nam
 
   // Add word to dictionary
   size_t name_len = strlen(current_word_name);
-  if (name_len >= 64)  // 64 is sizeof(word_dict[].name)
-    name_len = 63;
+  if (name_len >= MAX_WORD_NAME_LEN)
+    name_len = MAX_WORD_NAME_LEN - 1;
   memcpy(word_dict[*word_count].name, current_word_name, name_len);
   word_dict[*word_count].name[name_len] = '\0';
   word_dict[*word_count].code = *word_bc;
@@ -308,11 +330,11 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
     word_dict[i].code = nullptr;
 
   // Compilation mode state
-  bool in_definition = false;        // Are we inside a : ... ; definition?
-  char current_word_name[64] = {0};  // Name of word being defined
-  uint8_t* word_bc = nullptr;        // Bytecode buffer for current word
-  uint32_t word_bc_size = 0;         // Size of current word bytecode
-  uint32_t word_bc_cap = 0;          // Capacity of current word bytecode
+  bool in_definition = false;                       // Are we inside a : ... ; definition?
+  char current_word_name[MAX_WORD_NAME_LEN] = {0};  // Name of word being defined
+  uint8_t* word_bc = nullptr;                       // Bytecode buffer for current word
+  uint32_t word_bc_size = 0;                        // Size of current word bytecode
+  uint32_t word_bc_cap = 0;                         // Capacity of current word bytecode
 
   // Pointers to current bytecode buffer (updated when switching modes)
   uint8_t** current_bc = &bc;
@@ -341,7 +363,7 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
 
   // Tokenization and code generation
   const char* p = source;
-  char token[256];
+  char token[MAX_TOKEN_LEN];
 
   while (*p)
   {
