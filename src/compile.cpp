@@ -191,6 +191,10 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
   WordDefEntry word_dict[MAX_WORDS];
   int word_count = 0;
 
+  // Initialize code pointers to nullptr for safe cleanup
+  for (int i = 0; i < MAX_WORDS; i++)
+    word_dict[i].code = nullptr;
+
   // Compilation mode state
   bool in_definition = false;        // Are we inside a : ... ; definition?
   char current_word_name[64] = {0};  // Name of word being defined
