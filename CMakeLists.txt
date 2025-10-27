@@ -34,6 +34,9 @@ elseif(V4_FETCH)
       "main"
       CACHE STRING "V4 Git tag/branch")
 
+  # Disable V4's own tests to avoid conflicts
+  set(V4_BUILD_TESTS OFF CACHE BOOL "Build V4 tests" FORCE)
+
   fetchcontent_declare(
     v4_src
     GIT_REPOSITORY ${V4_GIT_REPO}
