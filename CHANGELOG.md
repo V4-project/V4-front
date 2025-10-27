@@ -19,6 +19,11 @@ All notable additions are listed here.
   - Works in both word definitions and main code
   - Can be used multiple times in a single word
   - Commonly used with IF for conditional early returns
+- **Memory access operators**
+  - Implemented `@` (fetch/LOAD) for reading 32-bit values from memory
+  - Implemented `!` (store/STORE) for writing 32-bit values to memory
+  - Both operators work in word definitions, main code, and control structures
+  - Added comprehensive test suite (`test_memory_access.cpp`) with 33 assertions
 
 ## [Unreleased] - 2025-10-25
 

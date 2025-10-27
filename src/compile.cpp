@@ -1076,6 +1076,17 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       opcode = v4::Op::INVERT;
       found = true;
     }
+    // Memory access operators (symbols are case-sensitive)
+    else if (strcmp(token, "@") == 0)
+    {
+      opcode = v4::Op::LOAD;
+      found = true;
+    }
+    else if (strcmp(token, "!") == 0)
+    {
+      opcode = v4::Op::STORE;
+      found = true;
+    }
 
     if (!found)
       CLEANUP_AND_RETURN(FrontErr::UnknownToken);
