@@ -1,52 +1,58 @@
-
 # V4-front
 
-A frontend for the V4 Virtual Machine.
+A Forth compiler frontend for the V4 Virtual Machine.
 
-Parses whitespace-separated integer tokens and emits V4 bytecode
-as `[LIT imm32]* RET`.  
-Designed for use in the early bootstrap stage of V4, with no exceptions and
-a stable C API.
+Compiles Forth source code to V4 bytecode with no exceptions, using a stable C API suitable for early bootstrap stages.
 
 ## Features
 
-- Exception-free, RTTI-free C++17 implementation  
-- Converts text to V4 bytecode (`LIT` / `RET` only for now)
-- Supports decimal, hex (`0x..`), and octal (`0..`) integers
-- C API with explicit error reporting (no C++ exceptions)
-- Tested via vendored **doctest** (`tests/vendor/doctest/doctest.h`)
+- **Full Forth compiler**: Arithmetic, comparison, bitwise, stack operations, control flow (IF/THEN/ELSE, DO/LOOP, BEGIN/UNTIL/WHILE/REPEAT/AGAIN), word definitions (`:` `;`), memory access (`@` `!`), and more
+- **Exception-free C++17**: No RTTI, explicit error reporting via return codes
+- **Integration tested**: End-to-end validation with V4 VM
+- **Well-tested**: Comprehensive test suite with 700+ assertions using doctest
+
+## Quick Start
+
+```bash
+# Build with V4 headers from Git
+cmake -B build -DV4_FETCH=ON
+cmake --build build
+
+# Run tests
+ctest --test-dir build --output-on-failure
+```
 
 ## API
 
 ```c
-int  v4front_compile(const char* source,
-                     V4FrontBuf* out_buf,
-                     char* err, size_t err_cap);
+#include "v4front/compile.h"
 
-int  v4front_compile_word(const char* name,
-                          const char* source,
-                          V4FrontBuf* out_buf,
-                          char* err, size_t err_cap);
+// Compile Forth source to V4 bytecode
+int v4front_compile(const char* source, V4FrontBuf* out_buf,
+                    char* err, size_t err_cap);
 
-void v4front_free(V4FrontBuf* b);
-````
-
-`V4FrontBuf` holds the compiled bytecode buffer and must be freed
-with `v4front_free()` after use.
-
-## Build
-
-```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DV4_FETCH=ON
-cmake --build build -j
+// Free compiled bytecode
+void v4front_free(V4FrontBuf* buf);
 ```
 
-## Test
+## Build Options
 
-```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build -j
-ctest --test-dir build --output-on-failure
+- `-DV4_FETCH=ON` - Fetch V4 from Git (enables integration tests)
+- `-DV4_SRC_DIR=/path/to/V4` - Use local V4 source (enables integration tests)
+- `-DV4_INCLUDE_DIR=/path/to/V4/include` - Use V4 headers only (no integration tests)
+
+## Example
+
+```c
+V4FrontBuf buf;
+char errmsg[256];
+
+// Compile Forth code
+if (v4front_compile(": DOUBLE DUP + ; 5 DOUBLE", &buf, errmsg, sizeof(errmsg)) == 0) {
+    // buf.data contains V4 bytecode
+    // buf.words contains defined words
+    v4front_free(&buf);
+}
 ```
 
 ## License
