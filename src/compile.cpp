@@ -181,6 +181,104 @@ static void cleanup_compile_state(uint8_t* bc, uint8_t* word_bc, WordDefEntry* w
   }
 }
 
+// Helper function to handle : (colon) - start word definition
+static FrontErr handle_colon_start(const char** p, bool* in_definition,
+                                   char* current_word_name, uint8_t** word_bc,
+                                   uint32_t* word_bc_size, uint32_t* word_bc_cap,
+                                   uint8_t*** current_bc, uint32_t** current_bc_size,
+                                   uint32_t** current_bc_cap, WordDefEntry* word_dict,
+                                   int word_count)
+{
+  // Check for nested :
+  if (*in_definition)
+    return FrontErr::NestedColon;
+
+  // Read next token as word name
+  while (**p && isspace((unsigned char)**p))
+    (*p)++;
+  if (!**p)
+    return FrontErr::ColonWithoutName;
+
+  const char* name_start = *p;
+  while (**p && !isspace((unsigned char)**p))
+    (*p)++;
+  size_t name_len = *p - name_start;
+
+  if (name_len == 0 || name_len >= 64)  // 64 is sizeof(current_word_name)
+    return FrontErr::ColonWithoutName;
+
+  memcpy(current_word_name, name_start, name_len);
+  current_word_name[name_len] = '\0';
+
+  // Check for duplicate word names
+  for (int i = 0; i < word_count; i++)
+  {
+    if (str_eq_ci(word_dict[i].name, current_word_name))
+      return FrontErr::DuplicateWord;
+  }
+
+  // Check dictionary full
+  if (word_count >= MAX_WORDS)
+    return FrontErr::DictionaryFull;
+
+  // Enter definition mode
+  *in_definition = true;
+  *word_bc = nullptr;
+  *word_bc_size = 0;
+  *word_bc_cap = 0;
+
+  // Switch to word bytecode buffer
+  *current_bc = word_bc;
+  *current_bc_size = word_bc_size;
+  *current_bc_cap = word_bc_cap;
+
+  return FrontErr::OK;
+}
+
+// Helper function to handle ; (semicolon) - end word definition
+static FrontErr handle_semicolon_end(bool* in_definition, char* current_word_name,
+                                     uint8_t** word_bc, uint32_t* word_bc_size,
+                                     uint32_t* word_bc_cap, uint8_t*** current_bc,
+                                     uint32_t** current_bc_size,
+                                     uint32_t** current_bc_cap, uint8_t** bc_main,
+                                     uint32_t* bc_main_size, uint32_t* bc_main_cap,
+                                     WordDefEntry* word_dict, int* word_count)
+{
+  // Check if in definition mode
+  if (!*in_definition)
+    return FrontErr::SemicolonWithoutColon;
+
+  // Append RET to word bytecode
+  FrontErr err;
+  if ((err = append_byte(*current_bc, *current_bc_size, *current_bc_cap,
+                         static_cast<uint8_t>(v4::Op::RET))) != FrontErr::OK)
+    return err;
+
+  // Add word to dictionary
+  size_t name_len = strlen(current_word_name);
+  if (name_len >= 64)  // 64 is sizeof(word_dict[].name)
+    name_len = 63;
+  memcpy(word_dict[*word_count].name, current_word_name, name_len);
+  word_dict[*word_count].name[name_len] = '\0';
+  word_dict[*word_count].code = *word_bc;
+  word_dict[*word_count].code_len = *word_bc_size;
+  (*word_count)++;
+
+  // Exit definition mode and switch back to main bytecode buffer
+  *in_definition = false;
+  current_word_name[0] = '\0';
+  *word_bc = nullptr;  // Don't free - it's now owned by word_dict
+  *word_bc_size = 0;
+  *word_bc_cap = 0;
+
+  // Switch back to main bytecode buffer
+  *current_bc = bc_main;
+  *current_bc_size = bc_main_size;
+  *current_bc_cap = bc_main_cap;
+
+  return FrontErr::OK;
+}
+
 static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
 {
   assert(out_buf);
@@ -267,87 +365,21 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
     if (str_eq_ci(token, ":"))
     {
       // : (colon) - start word definition
-
-      // Check for nested :
-      if (in_definition)
-        CLEANUP_AND_RETURN(FrontErr::NestedColon);
-
-      // Read next token as word name
-      while (*p && isspace((unsigned char)*p))
-        p++;
-      if (!*p)
-        CLEANUP_AND_RETURN(FrontErr::ColonWithoutName);
-
-      const char* name_start = p;
-      while (*p && !isspace((unsigned char)*p))
-        p++;
-      size_t name_len = p - name_start;
-
-      if (name_len == 0 || name_len >= sizeof(current_word_name))
-        CLEANUP_AND_RETURN(FrontErr::ColonWithoutName);
-
-      memcpy(current_word_name, name_start, name_len);
-      current_word_name[name_len] = '\0';
-
-      // Check for duplicate word names
-      for (int i = 0; i < word_count; i++)
-      {
-        if (str_eq_ci(word_dict[i].name, current_word_name))
-          CLEANUP_AND_RETURN(FrontErr::DuplicateWord);
-      }
-
-      // Check dictionary full
-      if (word_count >= MAX_WORDS)
-        CLEANUP_AND_RETURN(FrontErr::DictionaryFull);
-
-      // Enter definition mode
-      in_definition = true;
-      word_bc = nullptr;
-      word_bc_size = 0;
-      word_bc_cap = 0;
-
-      // Switch to word bytecode buffer
-      current_bc = &word_bc;
-      current_bc_size = &word_bc_size;
-      current_bc_cap = &word_bc_cap;
-
+      if ((err = handle_colon_start(&p, &in_definition, current_word_name, &word_bc,
+                                    &word_bc_size, &word_bc_cap, &current_bc,
+                                    &current_bc_size, &current_bc_cap, word_dict,
+                                    word_count)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
       continue;
     }
     else if (str_eq_ci(token, ";"))
     {
       // ; (semicolon) - end word definition
-
-      // Check if in definition mode
-      if (!in_definition)
-        CLEANUP_AND_RETURN(FrontErr::SemicolonWithoutColon);
-
-      // Append RET to word bytecode
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::RET))) != FrontErr::OK)
+      if ((err = handle_semicolon_end(&in_definition, current_word_name, &word_bc,
+                                      &word_bc_size, &word_bc_cap, &current_bc,
+                                      &current_bc_size, &current_bc_cap, &bc, &bc_size,
+                                      &bc_cap, word_dict, &word_count)) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
-
-      // Add word to dictionary
-      size_t name_len = strlen(current_word_name);
-      if (name_len >= sizeof(word_dict[word_count].name))
-        name_len = sizeof(word_dict[word_count].name) - 1;
-      memcpy(word_dict[word_count].name, current_word_name, name_len);
-      word_dict[word_count].name[name_len] = '\0';
-      word_dict[word_count].code = word_bc;
-      word_dict[word_count].code_len = word_bc_size;
-      word_count++;
-
-      // Exit definition mode and switch back to main bytecode buffer
-      in_definition = false;
-      current_word_name[0] = '\0';
-      word_bc = nullptr;  // Don't free - it's now owned by word_dict
-      word_bc_size = 0;
-      word_bc_cap = 0;
-
-      // Switch back to main bytecode buffer
-      current_bc = &bc;
-      current_bc_size = &bc_size;
-      current_bc_cap = &bc_cap;
-
       continue;
     }
 
