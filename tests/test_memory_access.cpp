@@ -171,7 +171,8 @@ TEST_CASE("Combined @ and ! operations")
 
   SUBCASE("Increment memory: : INC@ DUP @ 1 + SWAP ! ;")
   {
-    v4front_err err = v4front_compile(": INC@ DUP @ 1 + SWAP ! ;", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile(": INC@ DUP @ 1 + SWAP ! ;", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     CHECK(buf.word_count == 1);
@@ -200,7 +201,8 @@ TEST_CASE("Memory access in control structures")
 
   SUBCASE("@ in IF")
   {
-    v4front_err err = v4front_compile("100 @ IF 200 @ THEN", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile("100 @ IF 200 @ THEN", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     int load_count = 0;
@@ -216,7 +218,8 @@ TEST_CASE("Memory access in control structures")
 
   SUBCASE("! in LOOP")
   {
-    v4front_err err = v4front_compile("10 0 DO I 1000 ! LOOP", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile("10 0 DO I 1000 ! LOOP", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     bool has_store = false;

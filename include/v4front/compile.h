@@ -17,9 +17,9 @@ extern "C"
   // ---------------------------------------------------------------------------
   typedef struct
   {
-    char* name;        // Word name (dynamically allocated)
-    uint8_t* code;     // Bytecode (dynamically allocated)
-    uint32_t code_len; // Length of bytecode
+    char* name;         // Word name (dynamically allocated)
+    uint8_t* code;      // Bytecode (dynamically allocated)
+    uint32_t code_len;  // Length of bytecode
   } V4FrontWord;
 
   // ---------------------------------------------------------------------------
@@ -30,10 +30,10 @@ extern "C"
   // ---------------------------------------------------------------------------
   typedef struct
   {
-    V4FrontWord* words; // Array of compiled words (NULL if no words defined)
-    int word_count;     // Number of words in array
-    uint8_t* data;      // Main bytecode (may be NULL if only words defined)
-    size_t size;        // Size of main bytecode
+    V4FrontWord* words;  // Array of compiled words (NULL if no words defined)
+    int word_count;      // Number of words in array
+    uint8_t* data;       // Main bytecode (may be NULL if only words defined)
+    size_t size;         // Size of main bytecode
   } V4FrontBuf;
 
   // ---------------------------------------------------------------------------

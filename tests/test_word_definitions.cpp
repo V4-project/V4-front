@@ -41,7 +41,8 @@ TEST_CASE("Basic word definition")
 
   SUBCASE("Define word and use it: : DOUBLE DUP + ; 5 DOUBLE")
   {
-    v4front_err err = v4front_compile(": DOUBLE DUP + ; 5 DOUBLE", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile(": DOUBLE DUP + ; 5 DOUBLE", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     // Should have 1 word defined
@@ -61,7 +62,8 @@ TEST_CASE("Basic word definition")
 
   SUBCASE("Multiple word definitions")
   {
-    v4front_err err = v4front_compile(": DOUBLE DUP + ; : TRIPLE DUP DUP + + ;", &buf, errmsg, sizeof(errmsg));
+    v4front_err err = v4front_compile(": DOUBLE DUP + ; : TRIPLE DUP DUP + + ;", &buf,
+                                      errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     // Should have 2 words defined
@@ -92,7 +94,8 @@ TEST_CASE("Word calling word")
 
   SUBCASE("Define DOUBLE, then QUADRUPLE that uses DOUBLE")
   {
-    v4front_err err = v4front_compile(": DOUBLE DUP + ; : QUADRUPLE DOUBLE DOUBLE ;", &buf, errmsg, sizeof(errmsg));
+    v4front_err err = v4front_compile(": DOUBLE DUP + ; : QUADRUPLE DOUBLE DOUBLE ;",
+                                      &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     CHECK(buf.word_count == 2);
@@ -113,7 +116,9 @@ TEST_CASE("Word calling word")
 
   SUBCASE("Use both words in main code")
   {
-    v4front_err err = v4front_compile(": DOUBLE DUP + ; : TRIPLE DUP DUP + + ; 5 DOUBLE 3 TRIPLE", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile(": DOUBLE DUP + ; : TRIPLE DUP DUP + + ; 5 DOUBLE 3 TRIPLE", &buf,
+                        errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     CHECK(buf.word_count == 2);
@@ -142,7 +147,8 @@ TEST_CASE("Word definition with control flow")
 
   SUBCASE("Word with IF-THEN")
   {
-    v4front_err err = v4front_compile(": ABS DUP 0 < IF 0 SWAP - THEN ;", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile(": ABS DUP 0 < IF 0 SWAP - THEN ;", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     CHECK(buf.word_count == 1);
@@ -156,7 +162,8 @@ TEST_CASE("Word definition with control flow")
 
   SUBCASE("Word with DO-LOOP")
   {
-    v4front_err err = v4front_compile(": SUM 0 SWAP 0 DO I + LOOP ;", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile(": SUM 0 SWAP 0 DO I + LOOP ;", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     CHECK(buf.word_count == 1);
@@ -204,13 +211,15 @@ TEST_CASE("Word definition errors")
 
   SUBCASE("Nested colon")
   {
-    v4front_err err = v4front_compile(": OUTER : INNER + ; ;", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile(": OUTER : INNER + ; ;", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::NestedColon);
   }
 
   SUBCASE("Duplicate word name")
   {
-    v4front_err err = v4front_compile(": DOUBLE DUP + ; : DOUBLE DUP DUP + + ;", &buf, errmsg, sizeof(errmsg));
+    v4front_err err = v4front_compile(": DOUBLE DUP + ; : DOUBLE DUP DUP + + ;", &buf,
+                                      errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::DuplicateWord);
   }
 }
@@ -222,7 +231,8 @@ TEST_CASE("Case insensitive word names")
 
   SUBCASE("Define and use with different case")
   {
-    v4front_err err = v4front_compile(": double dup + ; 5 DOUBLE", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile(": double dup + ; 5 DOUBLE", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     CHECK(buf.word_count == 1);
@@ -234,7 +244,8 @@ TEST_CASE("Case insensitive word names")
 
   SUBCASE("Duplicate detection is case insensitive")
   {
-    v4front_err err = v4front_compile(": double dup + ; : DOUBLE dup dup + + ;", &buf, errmsg, sizeof(errmsg));
+    v4front_err err = v4front_compile(": double dup + ; : DOUBLE dup dup + + ;", &buf,
+                                      errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::DuplicateWord);
   }
 }
@@ -290,7 +301,8 @@ TEST_CASE("EXIT keyword for early return")
 
   SUBCASE("EXIT with IF: : ABS DUP 0 < IF 0 SWAP - EXIT THEN ;")
   {
-    v4front_err err = v4front_compile(": ABS DUP 0 < IF 0 SWAP - EXIT THEN ;", &buf, errmsg, sizeof(errmsg));
+    v4front_err err = v4front_compile(": ABS DUP 0 < IF 0 SWAP - EXIT THEN ;", &buf,
+                                      errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     CHECK(buf.word_count == 1);
@@ -310,7 +322,8 @@ TEST_CASE("EXIT keyword for early return")
 
   SUBCASE("Multiple EXIT: : MULTI 1 IF EXIT THEN 2 IF EXIT THEN 3 ;")
   {
-    v4front_err err = v4front_compile(": MULTI 1 IF EXIT THEN 2 IF EXIT THEN 3 ;", &buf, errmsg, sizeof(errmsg));
+    v4front_err err = v4front_compile(": MULTI 1 IF EXIT THEN 2 IF EXIT THEN 3 ;", &buf,
+                                      errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
 
     CHECK(buf.word_count == 1);

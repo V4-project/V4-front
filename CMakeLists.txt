@@ -35,7 +35,9 @@ elseif(V4_FETCH)
       CACHE STRING "V4 Git tag/branch")
 
   # Disable V4's own tests to avoid conflicts
-  set(V4_BUILD_TESTS OFF CACHE BOOL "Build V4 tests" FORCE)
+  set(V4_BUILD_TESTS
+      OFF
+      CACHE BOOL "Build V4 tests" FORCE)
 
   fetchcontent_declare(
     v4_src
@@ -83,8 +85,8 @@ endif()
 if(V4FRONT_BUILD_TESTS)
   enable_testing()
 
-  # Helper function to add a V4-front test
-  # Usage: add_v4front_test(test_name [SOURCE_FILE source.cpp] [LANGUAGE CXX])
+  # Helper function to add a V4-front test Usage: add_v4front_test(test_name [SOURCE_FILE
+  # source.cpp] [LANGUAGE CXX])
   function(add_v4front_test TEST_NAME)
     cmake_parse_arguments(ARG "" "SOURCE_FILE;LANGUAGE" "" ${ARGN})
 
@@ -107,7 +109,15 @@ if(V4FRONT_BUILD_TESTS)
       target_compile_definitions(${TEST_NAME} PRIVATE _HAS_EXCEPTIONS=0)
       target_compile_options(${TEST_NAME} PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
     else()
-      target_compile_options(${TEST_NAME} PRIVATE -fno-exceptions -fno-rtti)
+      # Get source file extension to determine language
+      get_filename_component(SOURCE_EXT ${ARG_SOURCE_FILE} EXT)
+      if(SOURCE_EXT STREQUAL ".c")
+        # For C tests, skip -fno-rtti (not applicable to C)
+        target_compile_options(${TEST_NAME} PRIVATE -fno-exceptions)
+      else()
+        # For C++ tests
+        target_compile_options(${TEST_NAME} PRIVATE -fno-exceptions -fno-rtti)
+      endif()
     endif()
 
     # Register test

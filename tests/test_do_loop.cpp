@@ -374,16 +374,18 @@ TEST_CASE("LEAVE: early loop exit")
 
   SUBCASE("LEAVE with +LOOP: 100 0 DO I 50 > IF LEAVE THEN 10 +LOOP")
   {
-    v4front_err err = v4front_compile("100 0 DO I 50 > IF LEAVE THEN 10 +LOOP", &buf, errmsg,
-                                      sizeof(errmsg));
+    v4front_err err = v4front_compile("100 0 DO I 50 > IF LEAVE THEN 10 +LOOP", &buf,
+                                      errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
 
-  SUBCASE("Multiple LEAVE in same loop: 10 0 DO I 3 = IF LEAVE THEN I 7 = IF LEAVE THEN LOOP")
+  SUBCASE(
+      "Multiple LEAVE in same loop: 10 0 DO I 3 = IF LEAVE THEN I 7 = IF LEAVE THEN LOOP")
   {
-    v4front_err err = v4front_compile(
-        "10 0 DO I 3 = IF LEAVE THEN I 7 = IF LEAVE THEN LOOP", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile("10 0 DO I 3 = IF LEAVE THEN I 7 = IF LEAVE THEN LOOP", &buf,
+                        errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
@@ -398,8 +400,8 @@ TEST_CASE("LEAVE: early loop exit")
 
   SUBCASE("LEAVE with ELSE: 10 0 DO I 5 = IF LEAVE ELSE I THEN LOOP")
   {
-    v4front_err err =
-        v4front_compile("10 0 DO I 5 = IF LEAVE ELSE I THEN LOOP", &buf, errmsg, sizeof(errmsg));
+    v4front_err err = v4front_compile("10 0 DO I 5 = IF LEAVE ELSE I THEN LOOP", &buf,
+                                      errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
@@ -426,7 +428,8 @@ TEST_CASE("LEAVE error cases")
 
   SUBCASE("LEAVE in BEGIN loop (not allowed)")
   {
-    v4front_err err = v4front_compile("BEGIN DUP LEAVE UNTIL", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile("BEGIN DUP LEAVE UNTIL", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::LeaveWithoutDo);
   }
 
@@ -444,8 +447,8 @@ TEST_CASE("LEAVE case insensitivity")
 
   SUBCASE("Lowercase: leave")
   {
-    v4front_err err = v4front_compile("10 0 do i 5 = if leave then loop", &buf, errmsg,
-                                      sizeof(errmsg));
+    v4front_err err =
+        v4front_compile("10 0 do i 5 = if leave then loop", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }

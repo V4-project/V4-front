@@ -145,9 +145,10 @@ struct ControlFrame
   uint32_t while_patch_addr;  // Position of JZ offset to backpatch (for WHILE)
   bool has_while;             // Whether this BEGIN has a WHILE clause
   // DO control fields
-  uint32_t do_addr;                          // Position after DO for backward jump (for LOOP/+LOOP)
-  uint32_t leave_patch_addrs[MAX_LEAVE_DEPTH];  // Positions of JMP offsets to backpatch (for LEAVE)
-  int leave_count;                           // Number of LEAVE statements in this DO loop
+  uint32_t do_addr;  // Position after DO for backward jump (for LOOP/+LOOP)
+  uint32_t leave_patch_addrs[MAX_LEAVE_DEPTH];  // Positions of JMP offsets to backpatch
+                                                // (for LEAVE)
+  int leave_count;  // Number of LEAVE statements in this DO loop
 };
 
 // ---------------------------------------------------------------------------
@@ -179,24 +180,26 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
   int word_count = 0;
 
   // Compilation mode state
-  bool in_definition = false;       // Are we inside a : ... ; definition?
-  char current_word_name[64] = {0}; // Name of word being defined
-  uint8_t* word_bc = nullptr;       // Bytecode buffer for current word
-  uint32_t word_bc_size = 0;        // Size of current word bytecode
-  uint32_t word_bc_cap = 0;         // Capacity of current word bytecode
+  bool in_definition = false;        // Are we inside a : ... ; definition?
+  char current_word_name[64] = {0};  // Name of word being defined
+  uint8_t* word_bc = nullptr;        // Bytecode buffer for current word
+  uint32_t word_bc_size = 0;         // Size of current word bytecode
+  uint32_t word_bc_cap = 0;          // Capacity of current word bytecode
 
   // Pointers to current bytecode buffer (updated when switching modes)
   uint8_t** current_bc = &bc;
   uint32_t* current_bc_size = &bc_size;
   uint32_t* current_bc_cap = &bc_cap;
 
-  // Helper macro for cleanup on error
-  #define CLEANUP_AND_RETURN(error_code) \
-    do { \
-      free(bc); \
-      if (word_bc) free(word_bc); \
-      return (error_code); \
-    } while(0)
+// Helper macro for cleanup on error
+#define CLEANUP_AND_RETURN(error_code) \
+  do                                   \
+  {                                    \
+    free(bc);                          \
+    if (word_bc)                       \
+      free(word_bc);                   \
+    return (error_code);               \
+  } while (0)
 
   // Handle empty input
   if (!source || !*source)
@@ -319,8 +322,11 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       }
 
       // Add word to dictionary
-      strncpy(word_dict[word_count].name, current_word_name, sizeof(word_dict[word_count].name) - 1);
-      word_dict[word_count].name[sizeof(word_dict[word_count].name) - 1] = '\0';
+      size_t name_len = strlen(current_word_name);
+      if (name_len >= sizeof(word_dict[word_count].name))
+        name_len = sizeof(word_dict[word_count].name) - 1;
+      memcpy(word_dict[word_count].name, current_word_name, name_len);
+      word_dict[word_count].name[name_len] = '\0';
       word_dict[word_count].code = word_bc;
       word_dict[word_count].code_len = word_bc_size;
       word_count++;
@@ -404,7 +410,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       uint32_t jz_next_ip = *current_bc_size + 2;
       int16_t offset = (int16_t)(frame->begin_addr - jz_next_ip);
 
-      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, offset)) != FrontErr::OK)
+      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, offset)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // Pop control frame
@@ -430,7 +437,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
 
       // Save position for backpatching and emit placeholder
       uint32_t patch_pos = *current_bc_size;
-      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // Update control frame
@@ -459,7 +467,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       uint32_t jmp_next_ip = *current_bc_size + 2;
       int16_t jmp_offset = (int16_t)(frame->begin_addr - jmp_next_ip);
 
-      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, jmp_offset)) != FrontErr::OK)
+      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap,
+                               jmp_offset)) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // Backpatch WHILE's JZ to jump to current position
@@ -491,7 +500,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       uint32_t jmp_next_ip = *current_bc_size + 2;
       int16_t offset = (int16_t)(frame->begin_addr - jmp_next_ip);
 
-      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, offset)) != FrontErr::OK)
+      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, offset)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // Pop control frame
@@ -552,7 +562,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
 
       // Save patch position and emit placeholder
       uint32_t patch_pos = *current_bc_size;
-      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // Record this LEAVE for backpatching
@@ -582,7 +593,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
                              static_cast<uint8_t>(v4::Op::LIT))) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
-      if ((err = append_i32_le(current_bc, current_bc_size, current_bc_cap, 1)) != FrontErr::OK)
+      if ((err = append_i32_le(current_bc, current_bc_size, current_bc_cap, 1)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // ADD: increment index
@@ -614,7 +626,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
         CLEANUP_AND_RETURN(err);
 
       uint32_t jz_patch_pos = *current_bc_size;
-      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // SWAP: ( index limit -- limit index )
@@ -638,7 +651,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       uint32_t jmp_next_ip = *current_bc_size + 2;
       int16_t jmp_offset = (int16_t)(frame->do_addr - jmp_next_ip);
 
-      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, jmp_offset)) != FrontErr::OK)
+      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap,
+                               jmp_offset)) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // Backpatch JZ to exit point
@@ -656,7 +670,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       // Backpatch all LEAVE jumps to exit point (current position)
       for (int i = 0; i < frame->leave_count; i++)
       {
-        int16_t leave_offset = (int16_t)(*current_bc_size - (frame->leave_patch_addrs[i] + 2));
+        int16_t leave_offset =
+            (int16_t)(*current_bc_size - (frame->leave_patch_addrs[i] + 2));
         backpatch_i16_le(*current_bc, frame->leave_patch_addrs[i], leave_offset);
       }
 
@@ -708,7 +723,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
         CLEANUP_AND_RETURN(err);
 
       uint32_t jz_patch_pos = *current_bc_size;
-      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // SWAP >R >R: push back
@@ -730,7 +746,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       uint32_t jmp_next_ip = *current_bc_size + 2;
       int16_t jmp_offset = (int16_t)(frame->do_addr - jmp_next_ip);
 
-      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, jmp_offset)) != FrontErr::OK)
+      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap,
+                               jmp_offset)) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // Backpatch JZ
@@ -748,7 +765,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       // Backpatch all LEAVE jumps to exit point (current position)
       for (int i = 0; i < frame->leave_count; i++)
       {
-        int16_t leave_offset = (int16_t)(*current_bc_size - (frame->leave_patch_addrs[i] + 2));
+        int16_t leave_offset =
+            (int16_t)(*current_bc_size - (frame->leave_patch_addrs[i] + 2));
         backpatch_i16_le(*current_bc, frame->leave_patch_addrs[i], leave_offset);
       }
 
@@ -768,7 +786,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
 
       // Save position for backpatching and emit placeholder
       uint32_t patch_pos = *current_bc_size;
-      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // Push control frame
@@ -797,7 +816,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
         CLEANUP_AND_RETURN(err);
 
       uint32_t jmp_patch_pos = *current_bc_size;
-      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+      if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap, 0)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       // Now backpatch JZ to jump to current position (start of ELSE clause)
@@ -881,7 +901,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
                              static_cast<uint8_t>(v4::Op::LIT))) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
-      if ((err = append_i32_le(current_bc, current_bc_size, current_bc_cap, val)) != FrontErr::OK)
+      if ((err = append_i32_le(current_bc, current_bc_size, current_bc_cap, val)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
       continue;
     }
