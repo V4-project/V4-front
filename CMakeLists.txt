@@ -160,6 +160,7 @@ if(V4FRONT_BUILD_TESTS)
   add_v4front_test(test_word_definitions)
   add_v4front_test(test_memory_access)
   add_v4front_test(test_context)
+  add_v4front_test(test_error_position)
 
   # C test (requires special handling)
   add_v4front_test(test_c SOURCE_FILE tests/test_c.c LANGUAGE CXX)

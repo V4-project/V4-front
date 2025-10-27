@@ -162,6 +162,69 @@ extern "C"
   // ---------------------------------------------------------------------------
   int v4front_context_find_word(const V4FrontContext* ctx, const char* name);
 
+  // ===========================================================================
+  // Detailed Error Information (for improved error messages)
+  // ===========================================================================
+
+  // ---------------------------------------------------------------------------
+  // V4FrontError
+  //  - Detailed error information structure.
+  //  - Contains error code, message, position, and context.
+  //  - Used by v4front_compile_ex() and v4front_compile_with_context_ex().
+  // ---------------------------------------------------------------------------
+  typedef struct
+  {
+    v4front_err_t code;  // Error code (same as return value)
+    char message[256];   // Human-readable error message
+    int position;        // Byte offset in source where error occurred (-1 if unknown)
+    int line;            // Line number (1-based, -1 if unknown)
+    int column;          // Column number (1-based, -1 if unknown)
+    char token[64];      // Token that caused the error (empty if not applicable)
+    char context[128];   // Surrounding source context (empty if not applicable)
+  } V4FrontError;
+
+  // ---------------------------------------------------------------------------
+  // v4front_compile_ex
+  //  - Compiles source with detailed error information.
+  //  - On error, populates error_out with position and context.
+  //  - Otherwise identical to v4front_compile().
+  //
+  //  @param source    Source code to compile
+  //  @param out_buf   Output buffer
+  //  @param error_out Error information output (may be NULL)
+  //  @return 0 on success, negative on error
+  // ---------------------------------------------------------------------------
+  v4front_err v4front_compile_ex(const char* source, V4FrontBuf* out_buf,
+                                 V4FrontError* error_out);
+
+  // ---------------------------------------------------------------------------
+  // v4front_compile_with_context_ex
+  //  - Compiles source with context and detailed error information.
+  //  - Combines features of v4front_compile_with_context() and v4front_compile_ex().
+  //
+  //  @param ctx       Compiler context (may be NULL)
+  //  @param source    Source code to compile
+  //  @param out_buf   Output buffer
+  //  @param error_out Error information output (may be NULL)
+  //  @return 0 on success, negative on error
+  // ---------------------------------------------------------------------------
+  v4front_err v4front_compile_with_context_ex(V4FrontContext* ctx, const char* source,
+                                              V4FrontBuf* out_buf,
+                                              V4FrontError* error_out);
+
+  // ---------------------------------------------------------------------------
+  // v4front_format_error
+  //  - Formats error information into a human-readable string.
+  //  - Includes source context with position indicator (^).
+  //
+  //  @param error   Error information
+  //  @param source  Original source code (for context display)
+  //  @param out_buf Output buffer for formatted message
+  //  @param out_cap Output buffer capacity
+  // ---------------------------------------------------------------------------
+  void v4front_format_error(const V4FrontError* error, const char* source, char* out_buf,
+                            size_t out_cap);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

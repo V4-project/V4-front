@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
@@ -228,17 +229,25 @@ static FrontErr handle_colon_start(const char** p, bool* in_definition,
                                    uint32_t* word_bc_size, uint32_t* word_bc_cap,
                                    uint8_t*** current_bc, uint32_t** current_bc_size,
                                    uint32_t** current_bc_cap, WordDefEntry* word_dict,
-                                   int word_count)
+                                   int word_count, const char** error_pos)
 {
   // Check for nested :
   if (*in_definition)
+  {
+    if (error_pos)
+      *error_pos = *p;
     return FrontErr::NestedColon;
+  }
 
   // Read next token as word name
   while (**p && isspace((unsigned char)**p))
     (*p)++;
   if (!**p)
+  {
+    if (error_pos)
+      *error_pos = *p;
     return FrontErr::ColonWithoutName;
+  }
 
   const char* name_start = *p;
   while (**p && !isspace((unsigned char)**p))
@@ -246,7 +255,11 @@ static FrontErr handle_colon_start(const char** p, bool* in_definition,
   size_t name_len = *p - name_start;
 
   if (name_len == 0 || name_len >= MAX_WORD_NAME_LEN)
+  {
+    if (error_pos)
+      *error_pos = name_start;
     return FrontErr::ColonWithoutName;
+  }
 
   memcpy(current_word_name, name_start, name_len);
   current_word_name[name_len] = '\0';
@@ -255,12 +268,20 @@ static FrontErr handle_colon_start(const char** p, bool* in_definition,
   for (int i = 0; i < word_count; i++)
   {
     if (str_eq_ci(word_dict[i].name, current_word_name))
+    {
+      if (error_pos)
+        *error_pos = name_start;
       return FrontErr::DuplicateWord;
+    }
   }
 
   // Check dictionary full
   if (word_count >= MAX_WORDS)
+  {
+    if (error_pos)
+      *error_pos = name_start;
     return FrontErr::DictionaryFull;
+  }
 
   // Enter definition mode
   *in_definition = true;
@@ -283,11 +304,16 @@ static FrontErr handle_semicolon_end(bool* in_definition, char* current_word_nam
                                      uint32_t** current_bc_size,
                                      uint32_t** current_bc_cap, uint8_t** bc_main,
                                      uint32_t* bc_main_size, uint32_t* bc_main_cap,
-                                     WordDefEntry* word_dict, int* word_count)
+                                     WordDefEntry* word_dict, int* word_count,
+                                     const char** error_pos, const char* token_pos)
 {
   // Check if in definition mode
   if (!*in_definition)
+  {
+    if (error_pos)
+      *error_pos = token_pos;
     return FrontErr::SemicolonWithoutColon;
+  }
 
   // Append RET to word bytecode
   FrontErr err;
@@ -321,9 +347,13 @@ static FrontErr handle_semicolon_end(bool* in_definition, char* current_word_nam
 }
 
 static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
-                                 V4FrontContext* ctx)
+                                 V4FrontContext* ctx, V4FrontError* error_out,
+                                 const char** error_pos)
 {
   assert(out_buf);
+
+  // Silence unused parameter warning (error_out is used by caller to fill error info)
+  (void)error_out;
 
   // Initialize output buffer
   out_buf->data = nullptr;
@@ -410,7 +440,7 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       if ((err = handle_colon_start(&p, &in_definition, current_word_name, &word_bc,
                                     &word_bc_size, &word_bc_cap, &current_bc,
                                     &current_bc_size, &current_bc_cap, word_dict,
-                                    word_count)) != FrontErr::OK)
+                                    word_count, error_pos)) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
       continue;
     }
@@ -420,7 +450,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       if ((err = handle_semicolon_end(&in_definition, current_word_name, &word_bc,
                                       &word_bc_size, &word_bc_cap, &current_bc,
                                       &current_bc_size, &current_bc_cap, &bc, &bc_size,
-                                      &bc_cap, word_dict, &word_count)) != FrontErr::OK)
+                                      &bc_cap, word_dict, &word_count, error_pos,
+                                      token_start)) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
       continue;
     }
@@ -430,7 +461,11 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     {
       // BEGIN: mark the current position for backward jump
       if (control_depth >= MAX_CONTROL_DEPTH)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::ControlDepthExceeded);
+      }
 
       // Push control frame with BEGIN position
       control_stack[control_depth].type = BEGIN_CONTROL;
@@ -444,7 +479,11 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       // DO: ( limit index -- R: -- limit index )
       // Emit: SWAP >R >R
       if (control_depth >= MAX_CONTROL_DEPTH)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::ControlDepthExceeded);
+      }
 
       // SWAP: swap limit and index
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
@@ -472,13 +511,25 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     {
       // UNTIL: emit JZ with backward offset to BEGIN
       if (control_depth <= 0)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::UntilWithoutBegin);
+      }
 
       ControlFrame* frame = &control_stack[control_depth - 1];
       if (frame->type != BEGIN_CONTROL)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::UntilWithoutBegin);
+      }
       if (frame->has_while)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::UntilAfterWhile);
+      }
 
       // Emit JZ opcode
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
@@ -501,13 +552,25 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     {
       // WHILE: emit JZ with placeholder offset (forward jump to after REPEAT)
       if (control_depth <= 0)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::WhileWithoutBegin);
+      }
 
       ControlFrame* frame = &control_stack[control_depth - 1];
       if (frame->type != BEGIN_CONTROL)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::WhileWithoutBegin);
+      }
       if (frame->has_while)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::DuplicateWhile);
+      }
 
       // Emit JZ opcode
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
@@ -529,13 +592,25 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     {
       // REPEAT: emit JMP to BEGIN, backpatch WHILE's JZ
       if (control_depth <= 0)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::RepeatWithoutBegin);
+      }
 
       ControlFrame* frame = &control_stack[control_depth - 1];
       if (frame->type != BEGIN_CONTROL)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::RepeatWithoutBegin);
+      }
       if (!frame->has_while)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::RepeatWithoutWhile);
+      }
 
       // Emit JMP opcode
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
@@ -562,13 +637,25 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     {
       // AGAIN: emit JMP with backward offset to BEGIN (infinite loop)
       if (control_depth <= 0)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::AgainWithoutBegin);
+      }
 
       ControlFrame* frame = &control_stack[control_depth - 1];
       if (frame->type != BEGIN_CONTROL)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::AgainWithoutBegin);
+      }
       if (frame->has_while)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::AgainAfterWhile);
+      }
 
       // Emit JMP opcode
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
@@ -592,7 +679,11 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       // LEAVE: exit the current DO loop early
       // Emit: R> R> DROP DROP JMP [forward]
       if (control_depth <= 0)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::LeaveWithoutDo);
+      }
 
       // Find the innermost DO control frame
       int do_frame_idx = -1;
@@ -606,13 +697,21 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       }
 
       if (do_frame_idx < 0)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::LeaveWithoutDo);
+      }
 
       ControlFrame* frame = &control_stack[do_frame_idx];
 
       // Check if we have space for another LEAVE
       if (frame->leave_count >= MAX_LEAVE_DEPTH)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::LeaveDepthExceeded);
+      }
 
       // R>: pop index from return stack
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
@@ -657,11 +756,19 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       // Emit: R> 1+ R> OVER OVER < JZ [forward] SWAP >R >R JMP [backward] [target] DROP
       // DROP
       if (control_depth <= 0)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::LoopWithoutDo);
+      }
 
       ControlFrame* frame = &control_stack[control_depth - 1];
       if (frame->type != DO_CONTROL)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::LoopWithoutDo);
+      }
 
       // R>: pop index from return stack
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
@@ -762,11 +869,19 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       // +LOOP: add n to index and loop if still in range
       // Similar to LOOP but uses the value on stack instead of 1
       if (control_depth <= 0)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::PLoopWithoutDo);
+      }
 
       ControlFrame* frame = &control_stack[control_depth - 1];
       if (frame->type != DO_CONTROL)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::PLoopWithoutDo);
+      }
 
       // R>: pop index
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
@@ -856,7 +971,11 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     {
       // IF: emit JZ with placeholder offset, push to control stack
       if (control_depth >= MAX_CONTROL_DEPTH)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::ControlDepthExceeded);
+      }
 
       // Emit JZ opcode
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
@@ -881,13 +1000,25 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     {
       // ELSE: emit JMP, then backpatch JZ to jump past the JMP
       if (control_depth <= 0)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::ElseWithoutIf);
+      }
 
       ControlFrame* frame = &control_stack[control_depth - 1];
       if (frame->type != IF_CONTROL)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::ElseWithoutIf);
+      }
       if (frame->has_else)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::DuplicateElse);
+      }
 
       // Emit JMP with placeholder (to skip ELSE clause)
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
@@ -913,11 +1044,19 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     {
       // THEN: backpatch the last IF or ELSE jump
       if (control_depth <= 0)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::ThenWithoutIf);
+      }
 
       ControlFrame* frame = &control_stack[control_depth - 1];
       if (frame->type != IF_CONTROL)
+      {
+        if (error_pos)
+          *error_pos = token_start;
         CLEANUP_AND_RETURN(FrontErr::ThenWithoutIf);
+      }
 
       control_depth--;
 
@@ -1203,7 +1342,11 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     }
 
     if (!found)
+    {
+      if (error_pos)
+        *error_pos = token_start;
       CLEANUP_AND_RETURN(FrontErr::UnknownToken);
+    }
 
     if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
                            static_cast<uint8_t>(opcode))) != FrontErr::OK)
@@ -1213,6 +1356,10 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
   // Check for unclosed control structures
   if (control_depth > 0)
   {
+    // Set error position to end of source (we don't know where the structure started)
+    if (error_pos)
+      *error_pos = p;
+
     // Check what kind of unclosed structure
     if (control_stack[control_depth - 1].type == IF_CONTROL)
       CLEANUP_AND_RETURN(FrontErr::UnclosedIf);
@@ -1224,7 +1371,12 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
 
   // Check for unclosed word definition
   if (in_definition)
+  {
+    // Set error position to end of source
+    if (error_pos)
+      *error_pos = p;
     CLEANUP_AND_RETURN(FrontErr::UnclosedColon);
+  }
 
   // Transfer word_dict to out_buf->words
   if (word_count > 0)
@@ -1307,7 +1459,8 @@ extern "C" v4front_err v4front_compile(const char* source, V4FrontBuf* out_buf, 
     return front_err_to_int(FrontErr::BufferTooSmall);
   }
 
-  FrontErr result = compile_internal(source, out_buf, nullptr);
+  const char* error_pos = nullptr;
+  FrontErr result = compile_internal(source, out_buf, nullptr, nullptr, &error_pos);
 
   if (result != FrontErr::OK)
   {
@@ -1484,7 +1637,8 @@ extern "C" v4front_err v4front_compile_with_context(V4FrontContext* ctx,
   }
 
   // Compile with context (may be NULL for stateless compilation)
-  FrontErr result = compile_internal(source, out_buf, ctx);
+  const char* error_pos = nullptr;
+  FrontErr result = compile_internal(source, out_buf, ctx, nullptr, &error_pos);
 
   if (result != FrontErr::OK)
   {
@@ -1492,4 +1646,275 @@ extern "C" v4front_err v4front_compile_with_context(V4FrontContext* ctx,
   }
 
   return front_err_to_int(result);
+}
+
+// ===========================================================================
+// Error Position Tracking and Detailed Error Information
+// ===========================================================================
+
+// Helper: Calculate line and column from position in source
+static void calculate_line_column(const char* source, const char* error_pos, int* line,
+                                  int* column)
+{
+  if (!source || !error_pos || error_pos < source)
+  {
+    *line = -1;
+    *column = -1;
+    return;
+  }
+
+  *line = 1;
+  *column = 1;
+
+  for (const char* p = source; p < error_pos; p++)
+  {
+    if (*p == '\n')
+    {
+      (*line)++;
+      *column = 1;
+    }
+    else
+    {
+      (*column)++;
+    }
+  }
+}
+
+// Helper: Extract token at error position
+static void extract_error_token(const char* source, const char* error_pos, char* token_out,
+                                size_t token_cap)
+{
+  if (!source || !error_pos || !token_out || token_cap == 0 || error_pos < source)
+  {
+    if (token_out && token_cap > 0)
+      token_out[0] = '\0';
+    return;
+  }
+
+  // Find start of token (skip back over non-whitespace)
+  const char* token_start = error_pos;
+  while (token_start > source && !isspace((unsigned char)*(token_start - 1)))
+    token_start--;
+
+  // Find end of token
+  const char* token_end = error_pos;
+  while (*token_end && !isspace((unsigned char)*token_end))
+    token_end++;
+
+  // Copy token
+  size_t token_len = token_end - token_start;
+  if (token_len >= token_cap)
+    token_len = token_cap - 1;
+
+  memcpy(token_out, token_start, token_len);
+  token_out[token_len] = '\0';
+}
+
+// Helper: Extract surrounding context
+static void extract_context(const char* source, const char* error_pos, char* context_out,
+                            size_t context_cap)
+{
+  if (!source || !error_pos || !context_out || context_cap == 0 || error_pos < source)
+  {
+    if (context_out && context_cap > 0)
+      context_out[0] = '\0';
+    return;
+  }
+
+  // Find start of line
+  const char* line_start = error_pos;
+  while (line_start > source && *(line_start - 1) != '\n')
+    line_start--;
+
+  // Find end of line
+  const char* line_end = error_pos;
+  while (*line_end && *line_end != '\n')
+    line_end++;
+
+  // Copy context (trimmed to fit)
+  size_t line_len = line_end - line_start;
+  if (line_len >= context_cap)
+    line_len = context_cap - 1;
+
+  memcpy(context_out, line_start, line_len);
+  context_out[line_len] = '\0';
+}
+
+// Helper: Fill V4FrontError structure
+static void fill_error_info(V4FrontError* error, const char* source, const char* error_pos,
+                            FrontErr code)
+{
+  if (!error)
+    return;
+
+  error->code = front_err_to_int(code);
+
+  // Copy error message
+  const char* msg = front_err_str(code);
+  size_t msg_len = strlen(msg);
+  if (msg_len >= sizeof(error->message))
+    msg_len = sizeof(error->message) - 1;
+  memcpy(error->message, msg, msg_len);
+  error->message[msg_len] = '\0';
+
+  // Calculate position
+  if (source && error_pos && error_pos >= source)
+  {
+    error->position = (int)(error_pos - source);
+    calculate_line_column(source, error_pos, &error->line, &error->column);
+    extract_error_token(source, error_pos, error->token, sizeof(error->token));
+    extract_context(source, error_pos, error->context, sizeof(error->context));
+  }
+  else
+  {
+    error->position = -1;
+    error->line = -1;
+    error->column = -1;
+    error->token[0] = '\0';
+    error->context[0] = '\0';
+  }
+}
+
+extern "C" v4front_err v4front_compile_ex(const char* source, V4FrontBuf* out_buf,
+                                          V4FrontError* error_out)
+{
+  if (!out_buf)
+  {
+    if (error_out)
+    {
+      error_out->code = front_err_to_int(FrontErr::BufferTooSmall);
+      snprintf(error_out->message, sizeof(error_out->message), "output buffer is NULL");
+      error_out->position = -1;
+      error_out->line = -1;
+      error_out->column = -1;
+      error_out->token[0] = '\0';
+      error_out->context[0] = '\0';
+    }
+    return front_err_to_int(FrontErr::BufferTooSmall);
+  }
+
+  const char* error_pos = nullptr;
+  FrontErr result = compile_internal(source, out_buf, nullptr, error_out, &error_pos);
+
+  if (result != FrontErr::OK && error_out)
+  {
+    fill_error_info(error_out, source, error_pos, result);
+  }
+
+  return front_err_to_int(result);
+}
+
+extern "C" v4front_err v4front_compile_with_context_ex(V4FrontContext* ctx,
+                                                       const char* source,
+                                                       V4FrontBuf* out_buf,
+                                                       V4FrontError* error_out)
+{
+  if (!out_buf)
+  {
+    if (error_out)
+    {
+      error_out->code = front_err_to_int(FrontErr::BufferTooSmall);
+      snprintf(error_out->message, sizeof(error_out->message), "output buffer is NULL");
+      error_out->position = -1;
+      error_out->line = -1;
+      error_out->column = -1;
+      error_out->token[0] = '\0';
+      error_out->context[0] = '\0';
+    }
+    return front_err_to_int(FrontErr::BufferTooSmall);
+  }
+
+  const char* error_pos = nullptr;
+  FrontErr result = compile_internal(source, out_buf, ctx, error_out, &error_pos);
+
+  if (result != FrontErr::OK && error_out)
+  {
+    fill_error_info(error_out, source, error_pos, result);
+  }
+
+  return front_err_to_int(result);
+}
+
+extern "C" void v4front_format_error(const V4FrontError* error, const char* source,
+                                     char* out_buf, size_t out_cap)
+{
+  if (!error || !out_buf || out_cap == 0)
+    return;
+
+  char* p = out_buf;
+  size_t remaining = out_cap;
+
+  // Format error message with position
+  int written;
+  if (error->line > 0 && error->column > 0)
+  {
+    written = snprintf(p, remaining, "Error: %s at line %d, column %d\n", error->message,
+                      error->line, error->column);
+  }
+  else
+  {
+    written = snprintf(p, remaining, "Error: %s\n", error->message);
+  }
+
+  if (written < 0 || (size_t)written >= remaining)
+    return;
+
+  p += written;
+  remaining -= written;
+
+  // Show context line if available
+  if (error->context[0] != '\0' && source)
+  {
+    written = snprintf(p, remaining, "  %s\n", error->context);
+    if (written < 0 || (size_t)written >= remaining)
+      return;
+
+    p += written;
+    remaining -= written;
+
+    // Add position indicator (^) under the error
+    if (error->column > 0)
+    {
+      written = snprintf(p, remaining, "  ");
+      if (written < 0 || (size_t)written >= remaining)
+        return;
+
+      p += written;
+      remaining -= written;
+
+      // Add spaces up to error column
+      for (int i = 1; i < error->column && remaining > 1; i++)
+      {
+        *p++ = ' ';
+        remaining--;
+      }
+
+      // Add caret
+      if (remaining > 1)
+      {
+        *p++ = '^';
+        remaining--;
+      }
+
+      // Add tildes under token if available
+      size_t token_len = strlen(error->token);
+      for (size_t i = 1; i < token_len && remaining > 1; i++)
+      {
+        *p++ = '~';
+        remaining--;
+      }
+
+      if (remaining > 1)
+      {
+        *p++ = '\n';
+        remaining--;
+      }
+
+      *p = '\0';
+    }
+  }
+
+  // Null-terminate
+  if (out_cap > 0)
+    out_buf[out_cap - 1] = '\0';
 }
