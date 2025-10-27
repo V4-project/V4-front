@@ -195,18 +195,21 @@ TEST_CASE("Word definition errors")
   {
     v4front_err err = v4front_compile(":", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::ColonWithoutName);
+    v4front_free(&buf);
   }
 
   SUBCASE("Semicolon without colon")
   {
     v4front_err err = v4front_compile("5 5 + ;", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::SemicolonWithoutColon);
+    v4front_free(&buf);
   }
 
   SUBCASE("Unclosed colon")
   {
     v4front_err err = v4front_compile(": DOUBLE DUP +", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::UnclosedColon);
+    v4front_free(&buf);
   }
 
   SUBCASE("Nested colon")
@@ -214,6 +217,7 @@ TEST_CASE("Word definition errors")
     v4front_err err =
         v4front_compile(": OUTER : INNER + ; ;", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::NestedColon);
+    v4front_free(&buf);
   }
 
   SUBCASE("Duplicate word name")
@@ -221,6 +225,7 @@ TEST_CASE("Word definition errors")
     v4front_err err = v4front_compile(": DOUBLE DUP + ; : DOUBLE DUP DUP + + ;", &buf,
                                       errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::DuplicateWord);
+    v4front_free(&buf);
   }
 }
 
@@ -247,6 +252,7 @@ TEST_CASE("Case insensitive word names")
     v4front_err err = v4front_compile(": double dup + ; : DOUBLE dup dup + + ;", &buf,
                                       errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::DuplicateWord);
+    v4front_free(&buf);
   }
 }
 
