@@ -11,6 +11,18 @@
 using namespace v4front;
 
 // ---------------------------------------------------------------------------
+// Platform-specific string duplication
+// ---------------------------------------------------------------------------
+static char* portable_strdup(const char* s)
+{
+#ifdef _MSC_VER
+  return _strdup(s);
+#else
+  return strdup(s);
+#endif
+}
+
+// ---------------------------------------------------------------------------
 // Helper: case-insensitive string comparison
 // ---------------------------------------------------------------------------
 static bool str_eq_ci(const char* a, const char* b)
@@ -1145,7 +1157,7 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
     for (int i = 0; i < word_count; i++)
     {
       // Copy name
-      out_buf->words[i].name = strdup(word_dict[i].name);
+      out_buf->words[i].name = portable_strdup(word_dict[i].name);
       if (!out_buf->words[i].name)
       {
         // Cleanup already allocated names
