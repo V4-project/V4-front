@@ -836,6 +836,14 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       }
       continue;
     }
+    else if (str_eq_ci(token, "EXIT"))
+    {
+      // EXIT: early return from word (emit RET)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::RET))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
 
     // Try looking up word in dictionary
     {

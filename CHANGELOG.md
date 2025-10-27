@@ -14,6 +14,11 @@ All notable additions are listed here.
   - Proper error handling for duplicate words, unclosed definitions, nested colons, etc.
   - Extended `V4FrontBuf` to include `words` array and `word_count` field
   - Added comprehensive test suite (`test_word_definitions.cpp`) with 72 assertions
+- **EXIT keyword**
+  - Implemented EXIT for early return from words (emits RET instruction)
+  - Works in both word definitions and main code
+  - Can be used multiple times in a single word
+  - Commonly used with IF for conditional early returns
 
 ## [Unreleased] - 2025-10-25
 

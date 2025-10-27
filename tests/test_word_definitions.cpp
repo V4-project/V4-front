@@ -259,3 +259,95 @@ TEST_CASE("Empty word definition")
     v4front_free(&buf);
   }
 }
+
+TEST_CASE("EXIT keyword for early return")
+{
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("Simple EXIT: : TEST 5 EXIT 10 ;")
+  {
+    v4front_err err = v4front_compile(": TEST 5 EXIT 10 ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    CHECK(buf.word_count == 1);
+
+    // Should contain: LIT 5, RET, LIT 10, RET
+    bool found_exit = false;
+    for (size_t i = 0; i < buf.words[0].code_len - 1; i++)
+    {
+      if (buf.words[0].code[i] == static_cast<uint8_t>(Op::LIT) &&
+          buf.words[0].code[i + 5] == static_cast<uint8_t>(Op::RET))
+      {
+        found_exit = true;
+        break;
+      }
+    }
+    CHECK(found_exit);
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("EXIT with IF: : ABS DUP 0 < IF 0 SWAP - EXIT THEN ;")
+  {
+    v4front_err err = v4front_compile(": ABS DUP 0 < IF 0 SWAP - EXIT THEN ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    CHECK(buf.word_count == 1);
+    CHECK(strcmp(buf.words[0].name, "ABS") == 0);
+
+    // Should contain RET for EXIT and RET at end
+    int ret_count = 0;
+    for (size_t i = 0; i < buf.words[0].code_len; i++)
+    {
+      if (buf.words[0].code[i] == static_cast<uint8_t>(Op::RET))
+        ret_count++;
+    }
+    CHECK(ret_count == 2);  // One for EXIT, one at end
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("Multiple EXIT: : MULTI 1 IF EXIT THEN 2 IF EXIT THEN 3 ;")
+  {
+    v4front_err err = v4front_compile(": MULTI 1 IF EXIT THEN 2 IF EXIT THEN 3 ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    CHECK(buf.word_count == 1);
+
+    // Count RET instructions (2 for EXIT + 1 at end)
+    int ret_count = 0;
+    for (size_t i = 0; i < buf.words[0].code_len; i++)
+    {
+      if (buf.words[0].code[i] == static_cast<uint8_t>(Op::RET))
+        ret_count++;
+    }
+    CHECK(ret_count == 3);
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("EXIT in main code (should work)")
+  {
+    v4front_err err = v4front_compile("5 EXIT 10", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    // Main code can also use EXIT for early termination
+    bool found_ret_after_lit = false;
+    for (size_t i = 0; i < buf.size - 1; i++)
+    {
+      if (buf.data[i] == static_cast<uint8_t>(Op::LIT))
+      {
+        // After LIT (1 byte) + value (4 bytes) should be RET
+        if (i + 5 < buf.size && buf.data[i + 5] == static_cast<uint8_t>(Op::RET))
+        {
+          found_ret_after_lit = true;
+          break;
+        }
+      }
+    }
+    CHECK(found_ret_after_lit);
+
+    v4front_free(&buf);
+  }
+}
