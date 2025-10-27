@@ -259,20 +259,13 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
 
       // Check for nested :
       if (in_definition)
-      {
-        free(bc);
-        free(word_bc);
-        return FrontErr::NestedColon;
-      }
+        CLEANUP_AND_RETURN(FrontErr::NestedColon);
 
       // Read next token as word name
       while (*p && isspace((unsigned char)*p))
         p++;
       if (!*p)
-      {
-        free(bc);
-        return FrontErr::ColonWithoutName;
-      }
+        CLEANUP_AND_RETURN(FrontErr::ColonWithoutName);
 
       const char* name_start = p;
       while (*p && !isspace((unsigned char)*p))
@@ -280,10 +273,7 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       size_t name_len = p - name_start;
 
       if (name_len == 0 || name_len >= sizeof(current_word_name))
-      {
-        free(bc);
-        return FrontErr::ColonWithoutName;
-      }
+        CLEANUP_AND_RETURN(FrontErr::ColonWithoutName);
 
       memcpy(current_word_name, name_start, name_len);
       current_word_name[name_len] = '\0';
@@ -292,18 +282,12 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       for (int i = 0; i < word_count; i++)
       {
         if (str_eq_ci(word_dict[i].name, current_word_name))
-        {
-          free(bc);
-          return FrontErr::DuplicateWord;
-        }
+          CLEANUP_AND_RETURN(FrontErr::DuplicateWord);
       }
 
       // Check dictionary full
       if (word_count >= MAX_WORDS)
-      {
-        free(bc);
-        return FrontErr::DictionaryFull;
-      }
+        CLEANUP_AND_RETURN(FrontErr::DictionaryFull);
 
       // Enter definition mode
       in_definition = true;
@@ -324,19 +308,12 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
 
       // Check if in definition mode
       if (!in_definition)
-      {
-        free(bc);
-        return FrontErr::SemicolonWithoutColon;
-      }
+        CLEANUP_AND_RETURN(FrontErr::SemicolonWithoutColon);
 
       // Append RET to word bytecode
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
                              static_cast<uint8_t>(v4::Op::RET))) != FrontErr::OK)
-      {
-        free(bc);
-        free(word_bc);
-        return err;
-      }
+        CLEANUP_AND_RETURN(err);
 
       // Add word to dictionary
       size_t name_len = strlen(current_word_name);
