@@ -70,6 +70,98 @@ extern "C"
   // ---------------------------------------------------------------------------
   void v4front_free(V4FrontBuf* buf);
 
+  // ===========================================================================
+  // Stateful Compiler Context (for REPL support)
+  // ===========================================================================
+
+  // ---------------------------------------------------------------------------
+  // V4FrontContext
+  //  - Opaque context for stateful compilation.
+  //  - Tracks previously defined words to enable incremental compilation.
+  //  - Allows REPL to remember word definitions across multiple lines.
+  // ---------------------------------------------------------------------------
+  typedef struct V4FrontContext V4FrontContext;
+
+  // ---------------------------------------------------------------------------
+  // v4front_context_create
+  //  - Creates a new compiler context.
+  //  - Returns NULL on allocation failure.
+  // ---------------------------------------------------------------------------
+  V4FrontContext* v4front_context_create(void);
+
+  // ---------------------------------------------------------------------------
+  // v4front_context_destroy
+  //  - Destroys a compiler context and frees all associated resources.
+  //  - Safe to call with NULL (no-op).
+  // ---------------------------------------------------------------------------
+  void v4front_context_destroy(V4FrontContext* ctx);
+
+  // ---------------------------------------------------------------------------
+  // v4front_context_register_word
+  //  - Registers a word definition with the compiler context.
+  //  - This synchronizes the compiler with the VM's word dictionary.
+  //  - After registration, the word can be referenced in subsequent compilations.
+  //
+  //  @param ctx         Compiler context
+  //  @param name        Word name (must not be NULL, will be copied)
+  //  @param vm_word_idx VM word index (from vm_register_word)
+  //  @return 0 on success, negative on error
+  // ---------------------------------------------------------------------------
+  v4front_err v4front_context_register_word(V4FrontContext* ctx, const char* name,
+                                            int vm_word_idx);
+
+  // ---------------------------------------------------------------------------
+  // v4front_compile_with_context
+  //  - Compiles source code using a compiler context.
+  //  - Can reference previously registered words.
+  //  - Otherwise identical to v4front_compile().
+  //
+  //  @param ctx     Compiler context (may be NULL for stateless compilation)
+  //  @param source  Source code to compile
+  //  @param out_buf Output buffer
+  //  @param err     Error message buffer (may be NULL)
+  //  @param err_cap Error buffer capacity
+  //  @return 0 on success, negative on error
+  // ---------------------------------------------------------------------------
+  v4front_err v4front_compile_with_context(V4FrontContext* ctx, const char* source,
+                                           V4FrontBuf* out_buf, char* err,
+                                           size_t err_cap);
+
+  // ---------------------------------------------------------------------------
+  // v4front_context_reset
+  //  - Clears all registered words from the context.
+  //  - Should be called when the VM dictionary is reset.
+  // ---------------------------------------------------------------------------
+  void v4front_context_reset(V4FrontContext* ctx);
+
+  // ---------------------------------------------------------------------------
+  // v4front_context_get_word_count
+  //  - Returns the number of words registered in the context.
+  // ---------------------------------------------------------------------------
+  int v4front_context_get_word_count(const V4FrontContext* ctx);
+
+  // ---------------------------------------------------------------------------
+  // v4front_context_get_word_name
+  //  - Returns the name of the word at the given index.
+  //  - Returns NULL if index is out of range.
+  //
+  //  @param ctx Compiler context
+  //  @param idx Word index (0-based)
+  //  @return Word name or NULL
+  // ---------------------------------------------------------------------------
+  const char* v4front_context_get_word_name(const V4FrontContext* ctx, int idx);
+
+  // ---------------------------------------------------------------------------
+  // v4front_context_find_word
+  //  - Finds a word by name and returns its VM word index.
+  //  - Returns negative value if not found.
+  //
+  //  @param ctx  Compiler context
+  //  @param name Word name to find
+  //  @return VM word index or negative if not found
+  // ---------------------------------------------------------------------------
+  int v4front_context_find_word(const V4FrontContext* ctx, const char* name);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

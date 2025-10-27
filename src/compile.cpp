@@ -160,6 +160,25 @@ struct WordDefEntry
   uint32_t code_len;             // Length of bytecode
 };
 
+// ---------------------------------------------------------------------------
+// Compiler context structures (for stateful compilation)
+// ---------------------------------------------------------------------------
+
+// Word entry in compiler context (maps name to VM word index)
+struct ContextWordEntry
+{
+  char* name;       // Word name (dynamically allocated)
+  int vm_word_idx;  // VM word index
+};
+
+// Compiler context for stateful compilation (opaque to C API users)
+struct V4FrontContext
+{
+  ContextWordEntry* words;  // Array of registered words
+  int word_count;           // Number of registered words
+  int word_capacity;        // Capacity of words array
+};
+
 enum ControlType
 {
   IF_CONTROL,
@@ -301,7 +320,8 @@ static FrontErr handle_semicolon_end(bool* in_definition, char* current_word_nam
   return FrontErr::OK;
 }
 
-static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
+static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
+                                 V4FrontContext* ctx)
 {
   assert(out_buf);
 
@@ -927,12 +947,24 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
     // Try looking up word in dictionary
     {
       int word_idx = -1;
+
+      // First, search in local word_dict (words defined in this compilation)
       for (int i = 0; i < word_count; i++)
       {
         if (str_eq_ci(token, word_dict[i].name))
         {
           word_idx = i;
           break;
+        }
+      }
+
+      // If not found locally, search in context (words from previous compilations)
+      if (word_idx < 0 && ctx)
+      {
+        int vm_idx = v4front_context_find_word(ctx, token);
+        if (vm_idx >= 0)
+        {
+          word_idx = vm_idx;
         }
       }
 
@@ -944,6 +976,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
           CLEANUP_AND_RETURN(err);
 
         // Emit 16-bit word index (little-endian)
+        // If found in context, use VM word index directly
+        // If found locally, use local index (will be adjusted when registered to VM)
         if ((err = append_i16_le(current_bc, current_bc_size, current_bc_cap,
                                  static_cast<int16_t>(word_idx))) != FrontErr::OK)
           CLEANUP_AND_RETURN(err);
@@ -1273,7 +1307,7 @@ extern "C" v4front_err v4front_compile(const char* source, V4FrontBuf* out_buf, 
     return front_err_to_int(FrontErr::BufferTooSmall);
   }
 
-  FrontErr result = compile_internal(source, out_buf);
+  FrontErr result = compile_internal(source, out_buf, nullptr);
 
   if (result != FrontErr::OK)
   {
@@ -1317,4 +1351,145 @@ extern "C" void v4front_free(V4FrontBuf* buf)
     buf->data = nullptr;
     buf->size = 0;
   }
+}
+
+// ===========================================================================
+// Stateful Compiler Context Implementation
+// ===========================================================================
+
+extern "C" V4FrontContext* v4front_context_create(void)
+{
+  V4FrontContext* ctx = (V4FrontContext*)malloc(sizeof(V4FrontContext));
+  if (!ctx)
+    return nullptr;
+
+  ctx->words = nullptr;
+  ctx->word_count = 0;
+  ctx->word_capacity = 0;
+
+  return ctx;
+}
+
+extern "C" void v4front_context_destroy(V4FrontContext* ctx)
+{
+  if (!ctx)
+    return;
+
+  // Free all word names
+  for (int i = 0; i < ctx->word_count; i++)
+  {
+    free(ctx->words[i].name);
+  }
+
+  // Free words array
+  free(ctx->words);
+
+  // Free context
+  free(ctx);
+}
+
+extern "C" void v4front_context_reset(V4FrontContext* ctx)
+{
+  if (!ctx)
+    return;
+
+  // Free all word names
+  for (int i = 0; i < ctx->word_count; i++)
+  {
+    free(ctx->words[i].name);
+  }
+
+  // Clear word list
+  ctx->word_count = 0;
+}
+
+extern "C" v4front_err v4front_context_register_word(V4FrontContext* ctx,
+                                                     const char* name, int vm_word_idx)
+{
+  if (!ctx || !name)
+    return -1;  // Invalid argument
+
+  // Check if word already exists (case-insensitive)
+  for (int i = 0; i < ctx->word_count; i++)
+  {
+    if (str_eq_ci(ctx->words[i].name, name))
+    {
+      // Update existing entry
+      ctx->words[i].vm_word_idx = vm_word_idx;
+      return front_err_to_int(FrontErr::OK);
+    }
+  }
+
+  // Grow array if needed
+  if (ctx->word_count >= ctx->word_capacity)
+  {
+    int new_capacity = (ctx->word_capacity == 0) ? 16 : (ctx->word_capacity * 2);
+    ContextWordEntry* new_words =
+        (ContextWordEntry*)realloc(ctx->words, sizeof(ContextWordEntry) * new_capacity);
+    if (!new_words)
+      return front_err_to_int(FrontErr::OutOfMemory);
+
+    ctx->words = new_words;
+    ctx->word_capacity = new_capacity;
+  }
+
+  // Add new entry
+  ctx->words[ctx->word_count].name = portable_strdup(name);
+  if (!ctx->words[ctx->word_count].name)
+    return front_err_to_int(FrontErr::OutOfMemory);
+
+  ctx->words[ctx->word_count].vm_word_idx = vm_word_idx;
+  ctx->word_count++;
+
+  return front_err_to_int(FrontErr::OK);
+}
+
+extern "C" int v4front_context_get_word_count(const V4FrontContext* ctx)
+{
+  if (!ctx)
+    return 0;
+  return ctx->word_count;
+}
+
+extern "C" const char* v4front_context_get_word_name(const V4FrontContext* ctx, int idx)
+{
+  if (!ctx || idx < 0 || idx >= ctx->word_count)
+    return nullptr;
+  return ctx->words[idx].name;
+}
+
+extern "C" int v4front_context_find_word(const V4FrontContext* ctx, const char* name)
+{
+  if (!ctx || !name)
+    return -1;
+
+  for (int i = 0; i < ctx->word_count; i++)
+  {
+    if (str_eq_ci(ctx->words[i].name, name))
+      return ctx->words[i].vm_word_idx;
+  }
+
+  return -1;
+}
+
+extern "C" v4front_err v4front_compile_with_context(V4FrontContext* ctx,
+                                                    const char* source,
+                                                    V4FrontBuf* out_buf, char* err,
+                                                    size_t err_cap)
+{
+  if (!out_buf)
+  {
+    write_error_msg(err, err_cap, "output buffer is NULL");
+    return front_err_to_int(FrontErr::BufferTooSmall);
+  }
+
+  // Compile with context (may be NULL for stateless compilation)
+  FrontErr result = compile_internal(source, out_buf, ctx);
+
+  if (result != FrontErr::OK)
+  {
+    write_error(err, err_cap, result);
+  }
+
+  return front_err_to_int(result);
 }
