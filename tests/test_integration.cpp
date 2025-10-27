@@ -30,7 +30,7 @@ TEST_CASE("Integration: Compile and execute simple arithmetic")
     REQUIRE(vm != nullptr);
 
     // Register bytecode as word 0
-    int word_idx = vm_register_word(vm, "main", buf.data, buf.size);
+    int word_idx = vm_register_word(vm, "main", buf.data, static_cast<int>(buf.size));
     REQUIRE(word_idx >= 0);
 
     // Execute
@@ -53,7 +53,7 @@ TEST_CASE("Integration: Compile and execute simple arithmetic")
     struct Vm* vm = vm_create(&cfg);
     REQUIRE(vm != nullptr);
 
-    int word_idx = vm_register_word(vm, "main", buf.data, buf.size);
+    int word_idx = vm_register_word(vm, "main", buf.data, static_cast<int>(buf.size));
     REQUIRE(word_idx >= 0);
 
     struct Word* entry = vm_get_word(vm, word_idx);
@@ -89,7 +89,7 @@ TEST_CASE("Integration: Word definitions")
     REQUIRE(double_idx >= 0);
 
     // Register main code
-    int main_idx = vm_register_word(vm, "main", buf.data, buf.size);
+    int main_idx = vm_register_word(vm, "main", buf.data, static_cast<int>(buf.size));
     REQUIRE(main_idx >= 0);
 
     // Execute main
