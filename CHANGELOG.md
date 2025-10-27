@@ -24,6 +24,11 @@ All notable additions are listed here.
   - Implemented `!` (store/STORE) for writing 32-bit values to memory
   - Both operators work in word definitions, main code, and control structures
   - Added comprehensive test suite (`test_memory_access.cpp`) with 33 assertions
+- **Integration tests**
+  - Added integration test suite (`test_integration.cpp`) that verifies V4-front compiled bytecode executes correctly in V4 VM
+  - Tests verify compilation, word registration, and execution for arithmetic and word definitions
+  - Integration tests conditionally build when V4 VM library is available (via V4_SRC_DIR or V4_FETCH)
+  - CMake support for V4_SRC_DIR, V4_INCLUDE_DIR, and V4_FETCH options
 
 ## [Unreleased] - 2025-10-25
 

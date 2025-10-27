@@ -15,14 +15,29 @@ option(V4FRONT_BUILD_TESTS "Build tests" ON)
 option(V4_FETCH "Fetch V4 headers from Git" OFF)
 
 # ------------------------------------------------------------
-# V4 Headers (dependency)
+# V4 Headers and Library (dependency)
 # ------------------------------------------------------------
-if(DEFINED V4_INCLUDE_DIR)
+if(DEFINED V4_SRC_DIR)
+  # Use V4 source directory (for integration tests with v4vm library)
+  set(_V4_SRC_ROOT "${V4_SRC_DIR}")
+  if(NOT EXISTS "${_V4_SRC_ROOT}")
+    message(FATAL_ERROR "V4_SRC_DIR not found: ${_V4_SRC_ROOT}")
+  endif()
+  set(V4_BUILD_TESTS
+      OFF
+      CACHE BOOL "Build V4 tests" FORCE)
+  add_subdirectory("${_V4_SRC_ROOT}" "${CMAKE_CURRENT_BINARY_DIR}/v4_build")
+  set(_V4_INC_SRC "${_V4_SRC_ROOT}/include")
+  set(_V4_HAS_VM TRUE)
+  message(STATUS "Using V4 source from: ${_V4_SRC_ROOT}")
+
+elseif(DEFINED V4_INCLUDE_DIR)
   set(_V4_INC_SRC "${V4_INCLUDE_DIR}")
   if(NOT EXISTS "${_V4_INC_SRC}")
     message(FATAL_ERROR "V4_INCLUDE_DIR not found: ${_V4_INC_SRC}")
   endif()
-  message(STATUS "Using V4 headers from: ${_V4_INC_SRC}")
+  set(_V4_HAS_VM FALSE)
+  message(STATUS "Using V4 headers from: ${_V4_INC_SRC} (headers only, no VM library)")
 
 elseif(V4_FETCH)
   include(FetchContent)
@@ -46,14 +61,17 @@ elseif(V4_FETCH)
   fetchcontent_makeavailable(v4_src)
 
   set(_V4_INC_SRC "${v4_src_SOURCE_DIR}/include")
+  set(_V4_HAS_VM TRUE)
   message(STATUS "Fetched V4 from: ${v4_src_SOURCE_DIR}")
 
 else()
   message(
     FATAL_ERROR
-      "V4 headers not specified.\n" "Use one of:\n"
-      "  -DV4_INCLUDE_DIR=/path/to/V4/include\n"
-      "  -DV4_FETCH=ON -DV4_GIT_REPO=... -DV4_GIT_TAG=...")
+      "V4 dependency not specified.\n"
+      "Use one of:\n"
+      "  -DV4_SRC_DIR=/path/to/V4       (full source, enables integration tests)\n"
+      "  -DV4_INCLUDE_DIR=/path/to/V4/include  (headers only)\n"
+      "  -DV4_FETCH=ON                  (fetch from Git, enables integration tests)")
 endif()
 
 # ------------------------------------------------------------
@@ -144,4 +162,20 @@ if(V4FRONT_BUILD_TESTS)
 
   # C test (requires special handling)
   add_v4front_test(test_c SOURCE_FILE tests/test_c.c LANGUAGE CXX)
+
+  # Integration test (requires V4 VM library)
+  if(_V4_HAS_VM)
+    add_executable(test_integration tests/test_integration.cpp)
+    target_link_libraries(test_integration PRIVATE v4front v4vm)
+    if(MSVC)
+      target_compile_definitions(test_integration PRIVATE _HAS_EXCEPTIONS=0)
+      target_compile_options(test_integration PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
+    else()
+      target_compile_options(test_integration PRIVATE -fno-exceptions -fno-rtti)
+    endif()
+    add_test(NAME test_integration COMMAND test_integration)
+    message(STATUS "Integration tests enabled (V4 VM library available)")
+  else()
+    message(STATUS "Integration tests disabled (V4 VM library not available)")
+  endif()
 endif()
