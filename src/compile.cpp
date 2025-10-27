@@ -204,13 +204,18 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
   uint32_t* current_bc_cap = &bc_cap;
 
 // Helper macro for cleanup on error
-#define CLEANUP_AND_RETURN(error_code) \
-  do                                   \
-  {                                    \
-    free(bc);                          \
-    if (word_bc)                       \
-      free(word_bc);                   \
-    return (error_code);               \
+#define CLEANUP_AND_RETURN(error_code)      \
+  do                                        \
+  {                                         \
+    free(bc);                               \
+    if (word_bc)                            \
+      free(word_bc);                        \
+    for (int i = 0; i < word_count; i++)    \
+    {                                       \
+      if (word_dict[i].code)                \
+        free(word_dict[i].code);            \
+    }                                       \
+    return (error_code);                    \
   } while (0)
 
   // Handle empty input
@@ -1172,6 +1177,7 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf)
       // Transfer ownership of code (no copy needed)
       out_buf->words[i].code = word_dict[i].code;
       out_buf->words[i].code_len = word_dict[i].code_len;
+      word_dict[i].code = nullptr;  // Ownership transferred, don't free in cleanup
     }
 
     out_buf->word_count = word_count;
