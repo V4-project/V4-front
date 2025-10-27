@@ -129,6 +129,7 @@ if(V4FRONT_BUILD_TESTS)
   add_v4front_test(test_begin_again)
   add_v4front_test(test_return_stack_compile)
   add_v4front_test(test_do_loop)
+  add_v4front_test(test_word_definitions)
 
   # C test (requires special handling)
   add_v4front_test(test_c SOURCE_FILE tests/test_c.c LANGUAGE CXX)

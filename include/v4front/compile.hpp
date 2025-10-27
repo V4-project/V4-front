@@ -34,7 +34,7 @@ class BytecodeBuffer
   /**
    * @brief Construct an empty buffer.
    */
-  BytecodeBuffer() noexcept : buf_{nullptr, 0} {}
+  BytecodeBuffer() noexcept : buf_{nullptr, 0, nullptr, 0} {}
 
   /**
    * @brief Destructor - automatically frees allocated bytecode.
@@ -51,7 +51,7 @@ class BytecodeBuffer
   // Movable (transfer ownership)
   BytecodeBuffer(BytecodeBuffer&& other) noexcept : buf_(other.buf_)
   {
-    other.buf_ = {nullptr, 0};
+    other.buf_ = {nullptr, 0, nullptr, 0};
   }
 
   BytecodeBuffer& operator=(BytecodeBuffer&& other) noexcept
@@ -60,7 +60,7 @@ class BytecodeBuffer
     {
       v4front_free(&buf_);
       buf_ = other.buf_;
-      other.buf_ = {nullptr, 0};
+      other.buf_ = {nullptr, 0, nullptr, 0};
     }
     return *this;
   }
@@ -150,7 +150,7 @@ class BytecodeBuffer
   V4FrontBuf release() noexcept
   {
     V4FrontBuf result = buf_;
-    buf_ = {nullptr, 0};
+    buf_ = {nullptr, 0, nullptr, 0};
     return result;
   }
 
@@ -160,7 +160,7 @@ class BytecodeBuffer
   void clear() noexcept
   {
     v4front_free(&buf_);
-    buf_ = {nullptr, 0};
+    buf_ = {nullptr, 0, nullptr, 0};
   }
 };
 

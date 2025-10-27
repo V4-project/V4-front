@@ -1,6 +1,20 @@
 # V4-front Changelog
 All notable additions are listed here.
 
+## [Unreleased] - 2025-10-27
+
+### Added
+- **Word definitions**
+  - Implemented `:` (colon) and `;` (semicolon) keywords for defining custom words
+  - Added CALL instruction generation for invoking defined words
+  - Support for multiple word definitions in a single compilation unit
+  - Words can call other words (recursive and mutual recursion supported)
+  - Control flow structures (IF/THEN/ELSE, DO/LOOP, BEGIN/UNTIL, etc.) work inside word definitions
+  - Case-insensitive word name lookup
+  - Proper error handling for duplicate words, unclosed definitions, nested colons, etc.
+  - Extended `V4FrontBuf` to include `words` array and `word_count` field
+  - Added comprehensive test suite (`test_word_definitions.cpp`) with 72 assertions
+
 ## [Unreleased] - 2025-10-25
 
 ### Added
