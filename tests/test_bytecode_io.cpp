@@ -18,7 +18,7 @@ TEST_CASE("Bytecode file I/O")
     REQUIRE(buf.size > 0);
 
     // Save bytecode to file
-    const char* filename = "/tmp/test_simple.v4b";
+    const char* filename = "test_simple.v4b";
     err = v4front_save_bytecode(&buf, filename);
     REQUIRE(err == 0);
 
@@ -42,7 +42,7 @@ TEST_CASE("Bytecode file I/O")
     v4front_err err = v4front_compile(source, &buf, errmsg, sizeof(errmsg));
     REQUIRE(err == 0);
 
-    const char* filename = "/tmp/test_complex.v4b";
+    const char* filename = "test_complex.v4b";
     err = v4front_save_bytecode(&buf, filename);
     REQUIRE(err == 0);
 
@@ -62,7 +62,7 @@ TEST_CASE("Bytecode file I/O")
     v4front_err err = v4front_compile("13 1 SYS 0x01", &buf, errmsg, sizeof(errmsg));
     REQUIRE(err == 0);
 
-    const char* filename = "/tmp/test_sys.v4b";
+    const char* filename = "test_sys.v4b";
     err = v4front_save_bytecode(&buf, filename);
     REQUIRE(err == 0);
 
@@ -93,7 +93,7 @@ TEST_CASE("Bytecode file I/O")
   SUBCASE("Load validates magic number")
   {
     // Create a file with invalid magic number
-    const char* filename = "/tmp/test_invalid.v4b";
+    const char* filename = "test_invalid.v4b";
     FILE* fp = fopen(filename, "wb");
     REQUIRE(fp != nullptr);
 
@@ -120,13 +120,13 @@ TEST_CASE("Bytecode file I/O")
   SUBCASE("Error: Load nonexistent file")
   {
     V4FrontBuf loaded;
-    v4front_err err = v4front_load_bytecode("/tmp/nonexistent_xyz.v4b", &loaded);
+    v4front_err err = v4front_load_bytecode("nonexistent_xyz.v4b", &loaded);
     CHECK(err == -2);  // Failed to open file
   }
 
   SUBCASE("Error: Save with NULL buffer")
   {
-    v4front_err err = v4front_save_bytecode(nullptr, "/tmp/test.v4b");
+    v4front_err err = v4front_save_bytecode(nullptr, "test.v4b");
     CHECK(err == -1);  // Invalid parameters
   }
 
@@ -143,7 +143,7 @@ TEST_CASE("Bytecode file I/O")
 
   SUBCASE("Error: Load with NULL out_buf")
   {
-    v4front_err err = v4front_load_bytecode("/tmp/test.v4b", nullptr);
+    v4front_err err = v4front_load_bytecode("test.v4b", nullptr);
     CHECK(err == -1);  // Invalid parameters
   }
 
@@ -153,7 +153,7 @@ TEST_CASE("Bytecode file I/O")
     v4front_err err = v4front_compile("100 200 +", &buf, errmsg, sizeof(errmsg));
     REQUIRE(err == 0);
 
-    const char* filename = "/tmp/test_header.v4b";
+    const char* filename = "test_header.v4b";
     err = v4front_save_bytecode(&buf, filename);
     REQUIRE(err == 0);
 
@@ -204,7 +204,7 @@ TEST_CASE("Bytecode file I/O")
       v4front_err err = v4front_compile(program, &orig, errmsg, sizeof(errmsg));
       REQUIRE(err == 0);
 
-      const char* filename = "/tmp/test_roundtrip.v4b";
+      const char* filename = "test_roundtrip.v4b";
       err = v4front_save_bytecode(&orig, filename);
       REQUIRE(err == 0);
 
