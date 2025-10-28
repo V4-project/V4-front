@@ -1,7 +1,56 @@
 # V4-front Changelog
 All notable additions are listed here.
 
-## [Unreleased] - 2025-10-27
+## [0.2.0] - 2025-01-10
+
+### Added
+- **SYS instruction support**
+  - Implemented `SYS <id>` syntax for system calls with 8-bit immediate operand (0-255)
+  - Support for decimal and hexadecimal SYS IDs
+  - Case-insensitive SYS keyword matching
+  - Works in expressions and word definitions
+  - Added error codes: `MissingSysId` (-31), `InvalidSysId` (-32)
+  - Comprehensive test suite (`test_sys_compile.cpp`) with 66 assertions
+
+- **Bytecode file I/O (.v4b format)**
+  - New binary file format for saving/loading compiled bytecode
+  - 16-byte header with magic number ("V4BC"), version info, and metadata
+  - `v4front_save_bytecode()` - Save bytecode to .v4b file
+  - `v4front_load_bytecode()` - Load bytecode from .v4b file
+  - Magic number validation and error handling
+  - Little-endian encoding for cross-platform compatibility
+  - Complete format specification (`docs/bytecode-format.md`)
+  - Full test suite (`test_bytecode_io.cpp`) with 78 assertions
+
+- **KAT (Known Answer Test) framework**
+  - Declarative test specification format (.kat files)
+  - KAT parser and runner implementation
+  - 6 test categories with 36 test cases:
+    - `arithmetic.kat` - Basic arithmetic operations (8 tests)
+    - `stack.kat` - Stack manipulation (7 tests)
+    - `control.kat` - Control flow structures (4 tests)
+    - `memory.kat` - Memory access operations (5 tests)
+    - `sys.kat` - System call instructions (7 tests)
+    - `words.kat` - Word definitions (5 tests)
+  - Space-separated hex bytecode format with comments
+  - Automated bytecode verification
+  - KAT format specification (`docs/kat-format.md`)
+  - Test runner (`test_kat.cpp`) with 504 assertions
+
+### Documentation
+- Added comprehensive compiler specification (`docs/compiler-spec.md`, 342 lines)
+- Added bytecode file format specification (`docs/bytecode-format.md`, 214 lines)
+- Added KAT format specification (`docs/kat-format.md`, 269 lines)
+- Updated README.md with new features, API examples, and syntax reference
+- Added code formatting instructions (`make format`, `make format-check`)
+- Documented all supported Forth syntax with examples
+
+### Changed
+- Increased test coverage to 1,400+ assertions across 23 test suites
+- Enhanced error reporting with detailed position tracking
+- Updated build system to support KAT tests
+
+## [0.1.0] - 2025-10-27
 
 ### Added
 - **Word definitions**
@@ -30,7 +79,7 @@ All notable additions are listed here.
   - Integration tests conditionally build when V4 VM library is available (via V4_SRC_DIR or V4_FETCH)
   - CMake support for V4_SRC_DIR, V4_INCLUDE_DIR, and V4_FETCH options
 
-## [Unreleased] - 2025-10-25
+## [0.1.0] - Continued
 
 ### Added
 - **Core frontend (`front_compile.cpp`)**
