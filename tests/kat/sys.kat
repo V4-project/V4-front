@@ -1,0 +1,36 @@
+# sys.kat - System call instruction tests
+
+## Test: SYS with decimal ID
+SOURCE: SYS 1
+BYTECODE: 60 01  51
+# SYS 1, RET
+
+## Test: SYS with hex ID
+SOURCE: SYS 0x10
+BYTECODE: 60 10  51
+# SYS 16, RET
+
+## Test: SYS with parameters
+SOURCE: 13 1 SYS 0x01
+BYTECODE: 00 0D 00 00 00  00 01 00 00 00  60 01  51
+# LIT 13, LIT 1, SYS 1, RET
+
+## Test: Multiple SYS calls
+SOURCE: SYS 1 SYS 2 SYS 3
+BYTECODE: 60 01  60 02  60 03  51
+# SYS 1, SYS 2, SYS 3, RET
+
+## Test: SYS in expression
+SOURCE: 100 SYS 10 42 +
+BYTECODE: 00 64 00 00 00  60 0A  00 2A 00 00 00  10  51
+# LIT 100, SYS 10, LIT 42, ADD, RET
+
+## Test: SYS with zero ID
+SOURCE: SYS 0
+BYTECODE: 60 00  51
+# SYS 0, RET
+
+## Test: SYS with max ID
+SOURCE: SYS 255
+BYTECODE: 60 FF  51
+# SYS 255, RET

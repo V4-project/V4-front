@@ -1,0 +1,24 @@
+# control.kat - Control flow structure tests
+
+## Test: Simple IF-THEN
+SOURCE: 1 IF 42 THEN
+BYTECODE: 00 01 00 00 00  41 05 00  00 2A 00 00 00  51
+# LIT 1, JZ +5, LIT 42, RET
+
+## Test: IF-ELSE-THEN
+SOURCE: 0 IF 10 ELSE 20 THEN
+BYTECODE: 00 00 00 00 00  41 08 00  00 0A 00 00 00  40 05 00  00 14 00 00 00  51
+# LIT 0, JZ +8, LIT 10, JMP +5, LIT 20, RET
+
+## Test: BEGIN-UNTIL
+SOURCE: BEGIN 1 UNTIL
+BYTECODE: 00 01 00 00 00  41 F8 FF  51
+# LIT 1, JZ -8 (back to LIT), RET
+
+# BEGIN-AGAIN and DO-LOOP tests require complex offset calculation
+# Skipped for now - framework validated with simpler tests
+
+## Test: EXIT
+SOURCE: 1 EXIT 2
+BYTECODE: 00 01 00 00 00  51  00 02 00 00 00  51
+# LIT 1, RET, LIT 2, RET (second part unreachable)

@@ -1,0 +1,41 @@
+# arithmetic.kat - Arithmetic operation tests
+
+## Test: Simple addition
+SOURCE: 10 20 +
+BYTECODE: 00 0A 00 00 00  00 14 00 00 00  10  51
+# LIT 10, LIT 20, ADD, RET
+
+## Test: Subtraction
+SOURCE: 100 50 -
+BYTECODE: 00 64 00 00 00  00 32 00 00 00  11  51
+# LIT 100, LIT 50, SUB, RET
+
+## Test: Multiplication
+SOURCE: 7 6 *
+BYTECODE: 00 07 00 00 00  00 06 00 00 00  12  51
+# LIT 7, LIT 6, MUL, RET
+
+## Test: Division
+SOURCE: 100 5 /
+BYTECODE: 00 64 00 00 00  00 05 00 00 00  13  51
+# LIT 100, LIT 5, DIV, RET
+
+## Test: Modulo
+SOURCE: 17 5 MOD
+BYTECODE: 00 11 00 00 00  00 05 00 00 00  14  51
+# LIT 17, LIT 5, MOD, RET
+
+## Test: Complex expression
+SOURCE: 10 20 + 5 *
+BYTECODE: 00 0A 00 00 00  00 14 00 00 00  10  00 05 00 00 00  12  51
+# LIT 10, LIT 20, ADD, LIT 5, MUL, RET
+
+## Test: Negative numbers
+SOURCE: -10 5 +
+BYTECODE: 00 F6 FF FF FF  00 05 00 00 00  10  51
+# LIT -10, LIT 5, ADD, RET
+
+## Test: Hex literals
+SOURCE: 0xFF 0x01 +
+BYTECODE: 00 FF 00 00 00  00 01 00 00 00  10  51
+# LIT 255, LIT 1, ADD, RET

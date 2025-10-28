@@ -1,0 +1,26 @@
+# words.kat - Word definition and call tests
+
+## Test: Simple word definition
+SOURCE: : DOUBLE DUP + ;
+BYTECODE: 51
+# Main code: just RET (word is stored separately)
+
+## Test: Word definition and call
+SOURCE: : ANSWER 42 ; ANSWER
+BYTECODE: 50 00 00  51
+# CALL 0, RET (assumes ANSWER is word 0)
+
+## Test: Word with arithmetic
+SOURCE: : TRIPLE 3 * ;
+BYTECODE: 51
+# Main code: just RET (word is stored separately)
+
+## Test: Nested word calls
+SOURCE: : ADD1 1 + ; : ADD2 ADD1 ADD1 ;
+BYTECODE: 51
+# Main code: just RET (words are stored separately)
+
+## Test: Word definition with control flow
+SOURCE: : ABS DUP 0 < IF -1 * THEN ;
+BYTECODE: 51
+# Main code: just RET (word is stored separately)

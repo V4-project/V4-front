@@ -164,6 +164,20 @@ if(V4FRONT_BUILD_TESTS)
   add_v4front_test(test_sys_compile)
   add_v4front_test(test_bytecode_io)
 
+  # KAT tests (requires kat_runner.cpp)
+  add_executable(test_kat tests/test_kat.cpp tests/kat_runner.cpp)
+  target_link_libraries(test_kat PRIVATE v4front)
+  if(MSVC)
+    target_compile_definitions(test_kat PRIVATE _HAS_EXCEPTIONS=0)
+    target_compile_options(test_kat PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
+  else()
+    target_compile_options(test_kat PRIVATE -fno-exceptions -fno-rtti)
+  endif()
+  add_test(
+    NAME test_kat
+    COMMAND test_kat
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+
   # C test (requires special handling)
   add_v4front_test(test_c SOURCE_FILE tests/test_c.c LANGUAGE CXX)
 
