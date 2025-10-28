@@ -39,6 +39,141 @@ static bool str_eq_ci(const char* a, const char* b)
 }
 
 // ---------------------------------------------------------------------------
+// Forward declarations
+// ---------------------------------------------------------------------------
+static FrontErr append_byte(uint8_t** buf, uint32_t* size, uint32_t* cap, uint8_t byte);
+
+// ---------------------------------------------------------------------------
+// Opcode dispatch table for simple single-byte instructions
+// ---------------------------------------------------------------------------
+struct OpcodeMapping
+{
+  const char* token;
+  v4::Op opcode;
+  bool case_sensitive;  // true for symbols like +, -, @, !
+};
+
+static const OpcodeMapping OPCODE_TABLE[] = {
+    // Stack operations
+    {"DUP", v4::Op::DUP, false},
+    {"DROP", v4::Op::DROP, false},
+    {"SWAP", v4::Op::SWAP, false},
+    {"OVER", v4::Op::OVER, false},
+
+    // Return stack operations
+    {">R", v4::Op::TOR, false},
+    {"R>", v4::Op::FROMR, false},
+    {"R@", v4::Op::RFETCH, false},
+    {"I", v4::Op::RFETCH, false},  // I is alias for R@
+
+    // Arithmetic operators
+    {"+", v4::Op::ADD, true},
+    {"-", v4::Op::SUB, true},
+    {"*", v4::Op::MUL, true},
+    {"/", v4::Op::DIV, true},
+    {"MOD", v4::Op::MOD, false},
+
+    // Comparison operators
+    {"=", v4::Op::EQ, true},
+    {"==", v4::Op::EQ, true},
+    {"<>", v4::Op::NE, true},
+    {"!=", v4::Op::NE, true},
+    {"<", v4::Op::LT, true},
+    {"<=", v4::Op::LE, true},
+    {">", v4::Op::GT, true},
+    {">=", v4::Op::GE, true},
+
+    // Bitwise operators
+    {"AND", v4::Op::AND, false},
+    {"OR", v4::Op::OR, false},
+    {"XOR", v4::Op::XOR, false},
+    {"INVERT", v4::Op::INVERT, false},
+
+    // Memory access
+    {"@", v4::Op::LOAD, true},
+    {"!", v4::Op::STORE, true},
+
+    // Sentinel (end of table)
+    {nullptr, v4::Op::RET, false}};
+
+// Helper: Look up simple opcode in dispatch table
+// Returns true and sets opcode if found, false otherwise
+static bool lookup_simple_opcode(const char* token, v4::Op* opcode)
+{
+  for (const OpcodeMapping* entry = OPCODE_TABLE; entry->token != nullptr; ++entry)
+  {
+    bool match = entry->case_sensitive ? (strcmp(token, entry->token) == 0)
+                                       : str_eq_ci(token, entry->token);
+    if (match)
+    {
+      *opcode = entry->opcode;
+      return true;
+    }
+  }
+  return false;
+}
+
+// Helper: Emit J instruction (outer loop index)
+// Emits: R> R> R> DUP >R >R >R
+static FrontErr emit_j_instruction(uint8_t** buf, uint32_t* size, uint32_t* cap)
+{
+  FrontErr err;
+
+  // R> R> R>: pop current loop (index, limit) and next index
+  for (int i = 0; i < 3; i++)
+  {
+    if ((err = append_byte(buf, size, cap, static_cast<uint8_t>(v4::Op::FROMR))) !=
+        FrontErr::OK)
+      return err;
+  }
+
+  // DUP: copy the outer loop index
+  if ((err = append_byte(buf, size, cap, static_cast<uint8_t>(v4::Op::DUP))) !=
+      FrontErr::OK)
+    return err;
+
+  // >R >R >R: restore return stack
+  for (int i = 0; i < 3; i++)
+  {
+    if ((err = append_byte(buf, size, cap, static_cast<uint8_t>(v4::Op::TOR))) !=
+        FrontErr::OK)
+      return err;
+  }
+
+  return FrontErr::OK;
+}
+
+// Helper: Emit K instruction (outer outer loop index)
+// Emits: R> R> R> R> R> DUP >R >R >R >R >R
+static FrontErr emit_k_instruction(uint8_t** buf, uint32_t* size, uint32_t* cap)
+{
+  FrontErr err;
+
+  // R> x 5: pop two loops and next index
+  for (int i = 0; i < 5; i++)
+  {
+    if ((err = append_byte(buf, size, cap, static_cast<uint8_t>(v4::Op::FROMR))) !=
+        FrontErr::OK)
+      return err;
+  }
+
+  // DUP: copy the outer outer loop index
+  if ((err = append_byte(buf, size, cap, static_cast<uint8_t>(v4::Op::DUP))) !=
+      FrontErr::OK)
+    return err;
+
+  // >R x 5: restore return stack
+  for (int i = 0; i < 5; i++)
+  {
+    if ((err = append_byte(buf, size, cap, static_cast<uint8_t>(v4::Op::TOR))) !=
+        FrontErr::OK)
+      return err;
+  }
+
+  return FrontErr::OK;
+}
+
+// ---------------------------------------------------------------------------
 // Helper: write error message to buffer
 // ---------------------------------------------------------------------------
 static void write_error_msg(char* err, size_t err_cap, const char* msg)
@@ -1184,218 +1319,37 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       continue;
     }
 
-    // Try matching operators (case-insensitive for word operators)
-    v4::Op opcode = v4::Op::RET;  // placeholder
-    bool found = false;
-
-    // Stack operators
-    if (str_eq_ci(token, "DUP"))
+    // Special handling for J and K (multi-instruction sequences)
+    if (str_eq_ci(token, "J"))
     {
-      opcode = v4::Op::DUP;
-      found = true;
-    }
-    else if (str_eq_ci(token, "DROP"))
-    {
-      opcode = v4::Op::DROP;
-      found = true;
-    }
-    else if (str_eq_ci(token, "SWAP"))
-    {
-      opcode = v4::Op::SWAP;
-      found = true;
-    }
-    else if (str_eq_ci(token, "OVER"))
-    {
-      opcode = v4::Op::OVER;
-      found = true;
-    }
-    // Return stack operators
-    else if (str_eq_ci(token, ">R"))
-    {
-      opcode = v4::Op::TOR;
-      found = true;
-    }
-    else if (str_eq_ci(token, "R>"))
-    {
-      opcode = v4::Op::FROMR;
-      found = true;
-    }
-    else if (str_eq_ci(token, "R@"))
-    {
-      opcode = v4::Op::RFETCH;
-      found = true;
-    }
-    else if (str_eq_ci(token, "I"))
-    {
-      // I: current loop index = R@
-      opcode = v4::Op::RFETCH;
-      found = true;
-    }
-    else if (str_eq_ci(token, "J"))
-    {
-      // J: outer loop index
-      // Emit: R> R> R> DUP >R >R >R
-
-      // R> R> R>: pop current loop (index, limit) and next index
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+      if ((err = emit_j_instruction(current_bc, current_bc_size, current_bc_cap)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
-        CLEANUP_AND_RETURN(err);
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
-        CLEANUP_AND_RETURN(err);
-
-      // DUP: copy the outer loop index
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::DUP))) != FrontErr::OK)
-        CLEANUP_AND_RETURN(err);
-
-      // >R >R >R: restore return stack
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
-        CLEANUP_AND_RETURN(err);
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
-        CLEANUP_AND_RETURN(err);
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
-        CLEANUP_AND_RETURN(err);
-
-      found = true;
-      continue;  // J emits multiple instructions, so continue
+      continue;
     }
     else if (str_eq_ci(token, "K"))
     {
-      // K: outer outer loop index
-      // Emit: R> R> R> R> R> DUP >R >R >R >R >R
-
-      // R> x 5: pop two loops and next index
-      for (int i = 0; i < 5; i++)
-      {
-        if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                               static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
-          CLEANUP_AND_RETURN(err);
-      }
-
-      // DUP: copy the outer outer loop index
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::DUP))) != FrontErr::OK)
+      if ((err = emit_k_instruction(current_bc, current_bc_size, current_bc_cap)) !=
+          FrontErr::OK)
         CLEANUP_AND_RETURN(err);
-
-      // >R x 5: restore return stack
-      for (int i = 0; i < 5; i++)
-      {
-        if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                               static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
-          CLEANUP_AND_RETURN(err);
-      }
-
-      found = true;
-      continue;  // K emits multiple instructions, so continue
+      continue;
     }
 
-    // Arithmetic operators (symbols are case-sensitive)
-    else if (strcmp(token, "+") == 0)
+    // Try matching simple opcodes using dispatch table
+    v4::Op opcode;
+    if (lookup_simple_opcode(token, &opcode))
     {
-      opcode = v4::Op::ADD;
-      found = true;
-    }
-    else if (strcmp(token, "-") == 0)
-    {
-      opcode = v4::Op::SUB;
-      found = true;
-    }
-    else if (strcmp(token, "*") == 0)
-    {
-      opcode = v4::Op::MUL;
-      found = true;
-    }
-    else if (strcmp(token, "/") == 0)
-    {
-      opcode = v4::Op::DIV;
-      found = true;
-    }
-    else if (str_eq_ci(token, "MOD"))
-    {
-      opcode = v4::Op::MOD;
-      found = true;
-    }
-    // Comparison operators (symbols are case-sensitive)
-    else if (strcmp(token, "=") == 0 || strcmp(token, "==") == 0)
-    {
-      opcode = v4::Op::EQ;
-      found = true;
-    }
-    else if (strcmp(token, "<>") == 0 || strcmp(token, "!=") == 0)
-    {
-      opcode = v4::Op::NE;
-      found = true;
-    }
-    else if (strcmp(token, "<") == 0)
-    {
-      opcode = v4::Op::LT;
-      found = true;
-    }
-    else if (strcmp(token, "<=") == 0)
-    {
-      opcode = v4::Op::LE;
-      found = true;
-    }
-    else if (strcmp(token, ">") == 0)
-    {
-      opcode = v4::Op::GT;
-      found = true;
-    }
-    else if (strcmp(token, ">=") == 0)
-    {
-      opcode = v4::Op::GE;
-      found = true;
-    }
-    // Bitwise operators
-    else if (str_eq_ci(token, "AND"))
-    {
-      opcode = v4::Op::AND;
-      found = true;
-    }
-    else if (str_eq_ci(token, "OR"))
-    {
-      opcode = v4::Op::OR;
-      found = true;
-    }
-    else if (str_eq_ci(token, "XOR"))
-    {
-      opcode = v4::Op::XOR;
-      found = true;
-    }
-    else if (str_eq_ci(token, "INVERT"))
-    {
-      opcode = v4::Op::INVERT;
-      found = true;
-    }
-    // Memory access operators (symbols are case-sensitive)
-    else if (strcmp(token, "@") == 0)
-    {
-      opcode = v4::Op::LOAD;
-      found = true;
-    }
-    else if (strcmp(token, "!") == 0)
-    {
-      opcode = v4::Op::STORE;
-      found = true;
+      // Found in dispatch table - emit the opcode
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(opcode))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
     }
 
-    if (!found)
-    {
-      if (error_pos)
-        *error_pos = token_start;
-      CLEANUP_AND_RETURN(FrontErr::UnknownToken);
-    }
-
-    if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                           static_cast<uint8_t>(opcode))) != FrontErr::OK)
-      CLEANUP_AND_RETURN(err);
+    // Token not recognized
+    if (error_pos)
+      *error_pos = token_start;
+    CLEANUP_AND_RETURN(FrontErr::UnknownToken);
   }
 
   // Check for unclosed control structures
