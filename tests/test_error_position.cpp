@@ -309,9 +309,10 @@ TEST_CASE("Error position tracking: complex multiline source")
 
   SUBCASE("Error on line 3")
   {
-    const char* source = "1 2 +\n"
-                         "3 4 *\n"
-                         "5 WRONG -";
+    const char* source =
+        "1 2 +\n"
+        "3 4 *\n"
+        "5 WRONG -";
     v4front_err err = v4front_compile_ex(source, &buf, &error);
 
     CHECK(err < 0);
@@ -322,9 +323,10 @@ TEST_CASE("Error position tracking: complex multiline source")
 
   SUBCASE("Error after mixed content")
   {
-    const char* source = ": DOUBLE DUP + ;\n"
-                         "5 DOUBLE\n"
-                         "OOPS";
+    const char* source =
+        ": DOUBLE DUP + ;\n"
+        "5 DOUBLE\n"
+        "OOPS";
     v4front_err err = v4front_compile_ex(source, &buf, &error);
 
     CHECK(err < 0);

@@ -447,11 +447,10 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     else if (str_eq_ci(token, ";"))
     {
       // ; (semicolon) - end word definition
-      if ((err = handle_semicolon_end(&in_definition, current_word_name, &word_bc,
-                                      &word_bc_size, &word_bc_cap, &current_bc,
-                                      &current_bc_size, &current_bc_cap, &bc, &bc_size,
-                                      &bc_cap, word_dict, &word_count, error_pos,
-                                      token_start)) != FrontErr::OK)
+      if ((err = handle_semicolon_end(
+               &in_definition, current_word_name, &word_bc, &word_bc_size, &word_bc_cap,
+               &current_bc, &current_bc_size, &current_bc_cap, &bc, &bc_size, &bc_cap,
+               word_dict, &word_count, error_pos, token_start)) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
       continue;
     }
@@ -1082,6 +1081,52 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
         CLEANUP_AND_RETURN(err);
       continue;
     }
+    else if (str_eq_ci(token, "SYS"))
+    {
+      // SYS: system call with 8-bit ID
+      // Skip whitespace and get next token (the SYS ID)
+      while (*p && isspace((unsigned char)*p))
+        p++;
+
+      if (!*p)
+      {
+        // No token after SYS
+        if (error_pos)
+          *error_pos = token_start;
+        CLEANUP_AND_RETURN(FrontErr::MissingSysId);
+      }
+
+      // Extract ID token
+      const char* id_token_start = p;
+      while (*p && !isspace((unsigned char)*p))
+        p++;
+      size_t id_token_len = p - id_token_start;
+      if (id_token_len >= sizeof(token))
+        id_token_len = sizeof(token) - 1;
+
+      char id_token[MAX_TOKEN_LEN];
+      memcpy(id_token, id_token_start, id_token_len);
+      id_token[id_token_len] = '\0';
+
+      // Parse ID as integer
+      int32_t sys_id;
+      if (!try_parse_int(id_token, &sys_id) || sys_id < 0 || sys_id > 255)
+      {
+        if (error_pos)
+          *error_pos = id_token_start;
+        CLEANUP_AND_RETURN(FrontErr::InvalidSysId);
+      }
+
+      // Emit: [SYS] [id8]
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SYS))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(sys_id))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+
+      continue;
+    }
 
     // Try looking up word in dictionary
     {
@@ -1681,8 +1726,8 @@ static void calculate_line_column(const char* source, const char* error_pos, int
 }
 
 // Helper: Extract token at error position
-static void extract_error_token(const char* source, const char* error_pos, char* token_out,
-                                size_t token_cap)
+static void extract_error_token(const char* source, const char* error_pos,
+                                char* token_out, size_t token_cap)
 {
   if (!source || !error_pos || !token_out || token_cap == 0 || error_pos < source)
   {
@@ -1741,8 +1786,8 @@ static void extract_context(const char* source, const char* error_pos, char* con
 }
 
 // Helper: Fill V4FrontError structure
-static void fill_error_info(V4FrontError* error, const char* source, const char* error_pos,
-                            FrontErr code)
+static void fill_error_info(V4FrontError* error, const char* source,
+                            const char* error_pos, FrontErr code)
 {
   if (!error)
     return;
@@ -1849,7 +1894,7 @@ extern "C" void v4front_format_error(const V4FrontError* error, const char* sour
   if (error->line > 0 && error->column > 0)
   {
     written = snprintf(p, remaining, "Error: %s at line %d, column %d\n", error->message,
-                      error->line, error->column);
+                       error->line, error->column);
   }
   else
   {
