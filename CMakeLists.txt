@@ -89,8 +89,8 @@ target_link_libraries(v4front PUBLIC v4headers)
 
 # Per-target compile flags (avoid global overrides to reduce MSVC "overriding /EH" noise)
 if(MSVC)
-  # No exceptions/RTTI + silence C4530 (STL internal try/catch) + keep /WX
-  target_compile_definitions(v4front PRIVATE _HAS_EXCEPTIONS=0)
+  # No exceptions/RTTI + silence C4530 (STL internal try/catch) + silence C4996 (fopen) + keep /WX
+  target_compile_definitions(v4front PRIVATE _HAS_EXCEPTIONS=0 _CRT_SECURE_NO_WARNINGS)
   target_compile_options(v4front PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
 else()
   target_compile_options(v4front PRIVATE -Wall -Wextra -pedantic -Werror -fno-exceptions
@@ -124,7 +124,7 @@ if(V4FRONT_BUILD_TESTS)
 
     # Platform-specific compile options
     if(MSVC)
-      target_compile_definitions(${TEST_NAME} PRIVATE _HAS_EXCEPTIONS=0)
+      target_compile_definitions(${TEST_NAME} PRIVATE _HAS_EXCEPTIONS=0 _CRT_SECURE_NO_WARNINGS)
       target_compile_options(${TEST_NAME} PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
     else()
       # Get source file extension to determine language
@@ -168,7 +168,7 @@ if(V4FRONT_BUILD_TESTS)
   add_executable(test_kat tests/test_kat.cpp tests/kat_runner.cpp)
   target_link_libraries(test_kat PRIVATE v4front)
   if(MSVC)
-    target_compile_definitions(test_kat PRIVATE _HAS_EXCEPTIONS=0)
+    target_compile_definitions(test_kat PRIVATE _HAS_EXCEPTIONS=0 _CRT_SECURE_NO_WARNINGS)
     target_compile_options(test_kat PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
   else()
     target_compile_options(test_kat PRIVATE -fno-exceptions -fno-rtti)
@@ -186,7 +186,7 @@ if(V4FRONT_BUILD_TESTS)
     add_executable(test_integration tests/test_integration.cpp)
     target_link_libraries(test_integration PRIVATE v4front v4vm mock_hal)
     if(MSVC)
-      target_compile_definitions(test_integration PRIVATE _HAS_EXCEPTIONS=0)
+      target_compile_definitions(test_integration PRIVATE _HAS_EXCEPTIONS=0 _CRT_SECURE_NO_WARNINGS)
       target_compile_options(test_integration PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
     else()
       target_compile_options(test_integration PRIVATE -fno-exceptions -fno-rtti)
