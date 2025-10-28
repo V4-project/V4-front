@@ -83,7 +83,7 @@ target_include_directories(v4headers INTERFACE "${_V4_INC_SRC}")
 # ------------------------------------------------------------
 # Main Library
 # ------------------------------------------------------------
-add_library(v4front STATIC src/compile.cpp src/disasm.cpp)
+add_library(v4front STATIC src/compile.cpp src/disasm.cpp src/bytecode_io.cpp)
 target_include_directories(v4front PUBLIC "${PROJECT_SOURCE_DIR}/include")
 target_link_libraries(v4front PUBLIC v4headers)
 
@@ -162,6 +162,7 @@ if(V4FRONT_BUILD_TESTS)
   add_v4front_test(test_context)
   add_v4front_test(test_error_position)
   add_v4front_test(test_sys_compile)
+  add_v4front_test(test_bytecode_io)
 
   # C test (requires special handling)
   add_v4front_test(test_c SOURCE_FILE tests/test_c.c LANGUAGE CXX)

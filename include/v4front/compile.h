@@ -225,6 +225,58 @@ extern "C"
   void v4front_format_error(const V4FrontError* error, const char* source, char* out_buf,
                             size_t out_cap);
 
+  // ===========================================================================
+  // Bytecode File I/O (.v4b format)
+  // ===========================================================================
+
+  // ---------------------------------------------------------------------------
+  // V4BytecodeHeader
+  //  - File header structure for .v4b bytecode files.
+  //  - Contains magic number, version, and metadata.
+  // ---------------------------------------------------------------------------
+  typedef struct
+  {
+    uint8_t magic[4];       // Magic number: "V4BC" (0x56 0x34 0x42 0x43)
+    uint8_t version_major;  // Major version number (currently 0)
+    uint8_t version_minor;  // Minor version number (currently 1)
+    uint16_t flags;         // Reserved flags (must be 0)
+    uint32_t code_size;     // Size of bytecode in bytes
+    uint32_t reserved;      // Reserved for future use (must be 0)
+  } V4BytecodeHeader;
+
+  // ---------------------------------------------------------------------------
+  // v4front_save_bytecode
+  //  - Saves bytecode to a .v4b file.
+  //  - Writes V4BytecodeHeader followed by bytecode data.
+  //
+  //  @param buf      Bytecode buffer to save
+  //  @param filename Output file path
+  //  @return 0 on success, negative on error
+  //    -1: Invalid parameters (NULL buf or filename)
+  //    -2: Failed to open file for writing
+  //    -3: Failed to write header
+  //    -4: Failed to write bytecode
+  // ---------------------------------------------------------------------------
+  v4front_err v4front_save_bytecode(const V4FrontBuf* buf, const char* filename);
+
+  // ---------------------------------------------------------------------------
+  // v4front_load_bytecode
+  //  - Loads bytecode from a .v4b file.
+  //  - Reads and validates V4BytecodeHeader, then loads bytecode.
+  //  - Caller must call v4front_free() on out_buf when done.
+  //
+  //  @param filename Input file path
+  //  @param out_buf  Output buffer (will be populated with bytecode)
+  //  @return 0 on success, negative on error
+  //    -1: Invalid parameters (NULL filename or out_buf)
+  //    -2: Failed to open file for reading
+  //    -3: Failed to read header
+  //    -4: Invalid magic number (not "V4BC")
+  //    -5: Failed to allocate memory for bytecode
+  //    -6: Failed to read bytecode
+  // ---------------------------------------------------------------------------
+  v4front_err v4front_load_bytecode(const char* filename, V4FrontBuf* out_buf);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
