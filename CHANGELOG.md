@@ -1,6 +1,15 @@
 # V4-front Changelog
 All notable additions are listed here.
 
+## [0.2.1] - 2025-01-10
+
+### Fixed
+- **CI Build Fixes**
+  - Fixed `test_integration` linking on Ubuntu by adding `mock_hal` library dependency
+  - Fixed Windows MSVC builds by adding `_CRT_SECURE_NO_WARNINGS` to suppress C4996 warnings for standard C functions (`fopen`, etc.)
+  - Fixed `test_bytecode_io` on Windows by using portable relative paths instead of Unix-specific `/tmp/` directory
+  - All CI configurations now pass: Ubuntu Debug/Release, Windows Debug/Release, macOS Debug/Release
+
 ## [0.2.0] - 2025-01-10
 
 ### Added
