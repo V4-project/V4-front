@@ -1,6 +1,17 @@
 # V4-front Changelog
 All notable additions are listed here.
 
+## [0.2.2] - 2025-01-10
+
+### Changed
+- **Code Refactoring**
+  - Replaced large if-else chain (~200 lines) in operator matching with dispatch table approach
+  - Introduced `OpcodeMapping` structure and `OPCODE_TABLE` for cleaner opcode lookup
+  - Extracted J and K loop index instructions into separate helper functions (`emit_j_instruction`, `emit_k_instruction`)
+  - Reduced `compile.cpp` from 1964 to 1914 lines (-50 lines, -2.5%)
+  - Improved code maintainability: adding new operators now requires just one table entry instead of multiple if-else branches
+  - Better separation of concerns with focused helper functions
+
 ## [0.2.1] - 2025-01-10
 
 ### Fixed
