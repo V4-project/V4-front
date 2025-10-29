@@ -1,4 +1,4 @@
-.PHONY: all build test clean format format-check release
+.PHONY: all build test clean format format-check release size
 
 # Default target
 all: build test
@@ -74,6 +74,32 @@ ubsan: clean
 	@echo "🧪 Running tests with UndefinedBehaviorSanitizer..."
 	@cd build-ubsan && ctest --output-on-failure
 
+# Build release and show stripped binary sizes
+size:
+	@echo "📦 Building release with size optimization..."
+	@cmake -B build-release -DCMAKE_BUILD_TYPE=Release -DV4_FETCH=ON
+	@cmake --build build-release -j
+	@echo ""
+	@echo "📊 Stripping and measuring binary sizes..."
+	@echo ""
+	@echo "=== Library ==="
+	@if [ -f build-release/libv4front.a ]; then \
+		cp build-release/libv4front.a build-release/libv4front.stripped.a && \
+		strip --strip-debug build-release/libv4front.stripped.a && \
+		ls -lh build-release/libv4front.a build-release/libv4front.stripped.a | awk '{print $$9 ": " $$5}'; \
+	fi
+	@echo ""
+	@echo "=== Test Executables (stripped) ==="
+	@for binary in build-release/test_*; do \
+		if [ -f "$$binary" ] && [ -x "$$binary" ]; then \
+			cp "$$binary" "$${binary}.stripped" && \
+			strip "$${binary}.stripped" && \
+			echo "$$(basename $$binary): $$(ls -lh $${binary}.stripped | awk '{print $$5}')"; \
+		fi \
+	done
+	@echo ""
+	@echo "✅ Size measurement complete!"
+
 # Help
 help:
 	@echo "V4-front Makefile targets:"
@@ -89,6 +115,7 @@ help:
 	@echo "  make format-check    - Check formatting without modifying files"
 	@echo "  make asan            - Build and test with AddressSanitizer"
 	@echo "  make ubsan           - Build and test with UndefinedBehaviorSanitizer"
+	@echo "  make size            - Build release and show stripped binary sizes"
 	@echo "  make help            - Show this help message"
 	@echo ""
 	@echo "Examples:"
