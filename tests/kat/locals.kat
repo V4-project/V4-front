@@ -1,0 +1,91 @@
+# locals.kat - Local variable operation tests
+
+## Test: L++ (LINC) instruction
+SOURCE: L++ 0
+BYTECODE: 80 00  51
+# LINC 0, RET
+
+## Test: L-- (LDEC) instruction
+SOURCE: L-- 1
+BYTECODE: 81 01  51
+# LDEC 1, RET
+
+## Test: L++ and L-- together
+SOURCE: L++ 0 L-- 1
+BYTECODE: 80 00  81 01  51
+# LINC 0, LDEC 1, RET
+
+## Test: L@ (LGET) instruction
+SOURCE: L@ 0
+BYTECODE: 79 00  51
+# LGET 0, RET
+
+## Test: L! (LSET) instruction
+SOURCE: L! 1
+BYTECODE: 7A 01  51
+# LSET 1, RET
+
+## Test: L>! (LTEE) instruction
+SOURCE: L>! 2
+BYTECODE: 7B 02  51
+# LTEE 2, RET
+
+## Test: L@ and L! together
+SOURCE: L@ 0 L! 1
+BYTECODE: 79 00  7A 01  51
+# LGET 0, LSET 1, RET
+
+## Test: L@0 (LGET0) optimized instruction
+SOURCE: L@0
+BYTECODE: 7C  51
+# LGET0, RET
+
+## Test: L@1 (LGET1) optimized instruction
+SOURCE: L@1
+BYTECODE: 7D  51
+# LGET1, RET
+
+## Test: L!0 (LSET0) optimized instruction
+SOURCE: L!0
+BYTECODE: 7E  51
+# LSET0, RET
+
+## Test: L!1 (LSET1) optimized instruction
+SOURCE: L!1
+BYTECODE: 7F  51
+# LSET1, RET
+
+## Test: Mix of optimized and general local variables
+SOURCE: L@0 L@ 2 L!1
+BYTECODE: 7C  79 02  7F  51
+# LGET0, LGET 2, LSET1, RET
+
+## Test: Local variable with arithmetic
+SOURCE: L@0 L@1 +
+BYTECODE: 7C  7D  10  51
+# LGET0, LGET1, ADD, RET
+
+## Test: Store literal to local variable
+SOURCE: 42 L!0
+BYTECODE: 00 2A 00 00 00  7E  51
+# LIT 42, LSET0, RET
+
+## Test: Increment and store pattern
+SOURCE: L@0 1 + L!0
+BYTECODE: 7C  00 01 00 00 00  10  7E  51
+# LGET0, LIT 1, ADD, LSET0, RET
+
+## Test: L++ with multiple indices
+SOURCE: L++ 0 L++ 1 L++ 2
+BYTECODE: 80 00  80 01  80 02  51
+# LINC 0, LINC 1, LINC 2, RET
+
+## Test: Complex local variable operations
+SOURCE: 10 L!0 20 L!1 L@0 L@1 + L>! 2
+BYTECODE: 00 0A 00 00 00  7E  00 14 00 00 00  7F  7C  7D  10  7B 02  51
+# LIT 10, LSET0, LIT 20, LSET1, LGET0, LGET1, ADD, LTEE 2, RET
+
+## Test: Local variables in word definition
+SOURCE: : INC-LOCAL L@0 1 + L!0 ;
+BYTECODE: 51
+# Main code: just RET (word is stored separately)

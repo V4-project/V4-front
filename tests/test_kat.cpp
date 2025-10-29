@@ -122,6 +122,20 @@ TEST_CASE("KAT: Word definitions")
   }
 }
 
+TEST_CASE("KAT: Local variables")
+{
+  auto tests = load_kat_file("tests/kat/locals.kat");
+  REQUIRE_MESSAGE(!tests.empty(), "Failed to load locals.kat");
+
+  for (const auto& test : tests)
+  {
+    SUBCASE(test.name.c_str())
+    {
+      run_kat_test(test);
+    }
+  }
+}
+
 TEST_CASE("KAT Parser: Hex byte parsing")
 {
   uint8_t byte;
