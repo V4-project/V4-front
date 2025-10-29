@@ -1,6 +1,86 @@
 # V4-front Changelog
 All notable additions are listed here.
 
+## [0.3.0] - 2025-01-30
+
+### Added
+
+**Local Variables (Full Support)**
+- **L++, L--** - Increment/decrement local variables with LINC/LDEC opcodes
+- **L@, L!, L>!** - Get, set, and tee local variables with LGET/LSET/LTEE opcodes
+- **L@0, L@1, L!0, L!1** - Optimized single-byte access for local indices 0 and 1
+- Comprehensive KAT tests for all local variable operations
+
+**Recursion**
+- **RECURSE** - Recursive word definitions with automatic self-reference tracking
+- Supports multiple RECURSE calls within single word
+- Case-insensitive matching
+- Proper error handling when used outside word definitions (error -35)
+- Integration tests with factorial and Fibonacci examples
+
+**Additional Primitive Opcodes**
+Expose V4 VM opcodes previously unavailable in V4-front:
+
+*Arithmetic:*
+- **1+** (INC) - Increment top of stack
+- **1-** (DEC) - Decrement top of stack
+- **U/** (DIVU) - Unsigned division
+- **UMOD** (MODU) - Unsigned modulus
+
+*Bit Operations:*
+- **LSHIFT** (SHL) - Logical left shift
+- **RSHIFT** (SHR) - Logical right shift
+- **ARSHIFT** (SAR) - Arithmetic right shift (sign-preserving)
+
+*Comparison:*
+- **U<** (LTU) - Unsigned less than
+- **U<=** (LEU) - Unsigned less than or equal
+
+*Memory Access:*
+- **C@** (LOAD8U) - Byte fetch (unsigned 8-bit)
+- **C!** (STORE8) - Byte store (8-bit)
+- **W@** (LOAD16U) - Halfword fetch (unsigned 16-bit)
+- **W!** (STORE16) - Halfword store (16-bit)
+
+**Composite Words**
+Forth standard words implemented by expanding to multiple primitives at compile time:
+
+*Stack Manipulation:*
+- **ROT** ( a b c -- b c a ) - Rotate three elements using >R SWAP R> SWAP
+- **NIP** ( a b -- b ) - Remove second item using SWAP DROP
+- **TUCK** ( a b -- b a b ) - Insert copy under second using SWAP OVER
+
+*Arithmetic/Logic:*
+- **NEGATE** ( n -- -n ) - Sign negation using LIT0 SWAP SUB
+- **?DUP** ( x -- 0 | x x ) - Conditional duplicate with JZ branching
+- **ABS** ( n -- |n| ) - Absolute value with conditional negation
+- **MIN** ( a b -- min ) - Minimum of two values using OVER OVER LT IF/ELSE
+- **MAX** ( a b -- max ) - Maximum of two values using OVER OVER GT IF/ELSE
+
+**Developer Tools**
+- **make size** - Binary size measurement target
+  - Strips debug symbols from library and test executables
+  - Reports human-readable sizes for all binaries
+  - Consistent with V4 and V4-repl build systems
+
+### Changed
+
+**Testing Improvements**
+- Enhanced integration tests with full V4 VM execution verification
+- Added stack inspection using vm_ds_depth_public() and vm_ds_peek_public()
+- Comprehensive test coverage for RECURSE with bytecode verification
+- Integration tests for local variables with automatic frame pointer management
+- Test suite expanded from 27 to 28 suites (added test_composite.cpp)
+- Total assertions increased significantly with new functionality
+
+**Dependencies**
+- Now requires V4 VM v0.5.0 or later (automatic frame pointer management in CALL instruction)
+
+### Fixed
+- Fixed signed/unsigned mismatch warnings in test_recurse.cpp for Windows MSVC
+- Changed loop counter types from `int` to `uint32_t` when comparing with `code_len`
+- All tests pass on Windows CI with /WX (warnings as errors)
+
 ## [0.2.3] - 2025-10-29
 
 ### Fixed
