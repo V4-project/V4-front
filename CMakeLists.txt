@@ -166,6 +166,7 @@ if(V4FRONT_BUILD_TESTS)
   add_v4front_test(test_sys_compile)
   add_v4front_test(test_local_incdec)
   add_v4front_test(test_local_vars)
+  add_v4front_test(test_local_vars_opt)
   add_v4front_test(test_bytecode_io)
 
   # KAT tests (requires kat_runner.cpp)

@@ -93,6 +93,12 @@ static const OpcodeMapping OPCODE_TABLE[] = {
     {"@", v4::Op::LOAD, true},
     {"!", v4::Op::STORE, true},
 
+    // Local variable access (optimized for indices 0 and 1)
+    {"L@0", v4::Op::LGET0, false},
+    {"L@1", v4::Op::LGET1, false},
+    {"L!0", v4::Op::LSET0, false},
+    {"L!1", v4::Op::LSET1, false},
+
     // Sentinel (end of table)
     {nullptr, v4::Op::RET, false}};
 
