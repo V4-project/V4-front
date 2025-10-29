@@ -267,13 +267,13 @@ TEST_CASE("Optimized vs general local variable instructions")
     // L@0 version
     v4front_err err1 = v4front_compile("L@0", &buf, errmsg, sizeof(errmsg));
     REQUIRE(err1 == 0);
-    uint32_t opt_size = buf.size;
+    uint32_t opt_size = static_cast<uint32_t>(buf.size);
     v4front_free(&buf);
 
     // L@ 0 version
     v4front_err err2 = v4front_compile("L@ 0", &buf, errmsg, sizeof(errmsg));
     REQUIRE(err2 == 0);
-    uint32_t gen_size = buf.size;
+    uint32_t gen_size = static_cast<uint32_t>(buf.size);
     v4front_free(&buf);
 
     // Optimized should be 1 byte smaller (no immediate)
@@ -285,13 +285,13 @@ TEST_CASE("Optimized vs general local variable instructions")
     // L!1 version
     v4front_err err1 = v4front_compile("L!1", &buf, errmsg, sizeof(errmsg));
     REQUIRE(err1 == 0);
-    uint32_t opt_size = buf.size;
+    uint32_t opt_size = static_cast<uint32_t>(buf.size);
     v4front_free(&buf);
 
     // L! 1 version
     v4front_err err2 = v4front_compile("L! 1", &buf, errmsg, sizeof(errmsg));
     REQUIRE(err2 == 0);
-    uint32_t gen_size = buf.size;
+    uint32_t gen_size = static_cast<uint32_t>(buf.size);
     v4front_free(&buf);
 
     // Optimized should be 1 byte smaller (no immediate)
