@@ -162,6 +162,28 @@ static FrontErr emit_j_instruction(uint8_t** buf, uint32_t* size, uint32_t* cap)
   return FrontErr::OK;
 }
 
+// Helper: Emit ROT instruction (rotate three elements)
+// Emits: >R SWAP R> SWAP
+static FrontErr emit_rot_instruction(uint8_t** buf, uint32_t* size, uint32_t* cap)
+{
+  FrontErr err;
+
+  if ((err = append_byte(buf, size, cap, static_cast<uint8_t>(v4::Op::TOR))) !=
+      FrontErr::OK)
+    return err;
+  if ((err = append_byte(buf, size, cap, static_cast<uint8_t>(v4::Op::SWAP))) !=
+      FrontErr::OK)
+    return err;
+  if ((err = append_byte(buf, size, cap, static_cast<uint8_t>(v4::Op::FROMR))) !=
+      FrontErr::OK)
+    return err;
+  if ((err = append_byte(buf, size, cap, static_cast<uint8_t>(v4::Op::SWAP))) !=
+      FrontErr::OK)
+    return err;
+
+  return FrontErr::OK;
+}
+
 // Helper: Emit K instruction (outer outer loop index)
 // Emits: R> R> R> R> R> DUP >R >R >R >R >R
 static FrontErr emit_k_instruction(uint8_t** buf, uint32_t* size, uint32_t* cap)
@@ -1804,6 +1826,167 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
         CLEANUP_AND_RETURN(err);
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
                              static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "0="))
+    {
+      // 0= ( n -- flag ): test if zero
+      // Bytecode: LIT0, EQ
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LIT0))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::EQ))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "0<"))
+    {
+      // 0< ( n -- flag ): test if less than zero (negative)
+      // Bytecode: LIT0, LT
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LIT0))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LT))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "0>"))
+    {
+      // 0> ( n -- flag ): test if greater than zero (positive)
+      // Bytecode: LIT0, GT
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LIT0))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::GT))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "2DUP"))
+    {
+      // 2DUP ( a b -- a b a b ): duplicate top two items
+      // Bytecode: OVER, OVER
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "2DROP"))
+    {
+      // 2DROP ( a b -- ): drop top two items
+      // Bytecode: DROP, DROP
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "2SWAP"))
+    {
+      // 2SWAP ( a b c d -- c d a b ): swap top two pairs
+      // Bytecode: ROT >R ROT R>
+      if ((err = emit_rot_instruction(current_bc, current_bc_size, current_bc_cap)) !=
+          FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = emit_rot_instruction(current_bc, current_bc_size, current_bc_cap)) !=
+          FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "2OVER"))
+    {
+      // 2OVER ( a b c d -- a b c d a b ): copy second pair to top
+      // Bytecode: >R >R OVER OVER R> R> 2SWAP
+      // First, save top pair
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // Duplicate the now-top pair
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // Restore saved pair
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // Now we have: a b a b c d, need: a b c d a b
+      // Use 2SWAP: ROT >R ROT R>
+      if ((err = emit_rot_instruction(current_bc, current_bc_size, current_bc_cap)) !=
+          FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = emit_rot_instruction(current_bc, current_bc_size, current_bc_cap)) !=
+          FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "+!"))
+    {
+      // +! ( n addr -- ): add n to value at addr
+      // Bytecode: DUP >R @ + R> !
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DUP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LOAD))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::ADD))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::STORE))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "TRUE"))
+    {
+      // TRUE ( -- -1 ): true flag value
+      // Bytecode: LITN1
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LITN1))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "FALSE"))
+    {
+      // FALSE ( -- 0 ): false flag value
+      // Bytecode: LIT0
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LIT0))) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
       continue;
     }

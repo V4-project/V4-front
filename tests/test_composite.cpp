@@ -241,3 +241,254 @@ TEST_CASE("Composite words: in expressions")
     v4front_free(&buf);
   }
 }
+
+TEST_CASE("Composite words: zero comparisons")
+{
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("0=: test if zero")
+  {
+    // 0= ( n -- flag )
+    v4front_err err = v4front_compile(": TEST 0= ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 1);
+
+    // Should contain: LIT0, EQ, RET
+    const uint8_t* code = buf.words[0].code;
+    CHECK(code[0] == static_cast<uint8_t>(Op::LIT0));
+    CHECK(code[1] == static_cast<uint8_t>(Op::EQ));
+    CHECK(code[2] == static_cast<uint8_t>(Op::RET));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("0<: test if less than zero")
+  {
+    // 0< ( n -- flag )
+    v4front_err err = v4front_compile(": TEST 0< ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 1);
+
+    // Should contain: LIT0, LT, RET
+    const uint8_t* code = buf.words[0].code;
+    CHECK(code[0] == static_cast<uint8_t>(Op::LIT0));
+    CHECK(code[1] == static_cast<uint8_t>(Op::LT));
+    CHECK(code[2] == static_cast<uint8_t>(Op::RET));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("0>: test if greater than zero")
+  {
+    // 0> ( n -- flag )
+    v4front_err err = v4front_compile(": TEST 0> ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 1);
+
+    // Should contain: LIT0, GT, RET
+    const uint8_t* code = buf.words[0].code;
+    CHECK(code[0] == static_cast<uint8_t>(Op::LIT0));
+    CHECK(code[1] == static_cast<uint8_t>(Op::GT));
+    CHECK(code[2] == static_cast<uint8_t>(Op::RET));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("Zero comparisons in expressions")
+  {
+    v4front_err err = v4front_compile("0 0= 5 0= -3 0< 10 0>", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+}
+
+TEST_CASE("Composite words: double-cell stack operations")
+{
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("2DUP: duplicate top two items")
+  {
+    // 2DUP ( a b -- a b a b )
+    v4front_err err = v4front_compile(": TEST 2DUP ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 1);
+
+    // Should contain: OVER, OVER, RET
+    const uint8_t* code = buf.words[0].code;
+    CHECK(code[0] == static_cast<uint8_t>(Op::OVER));
+    CHECK(code[1] == static_cast<uint8_t>(Op::OVER));
+    CHECK(code[2] == static_cast<uint8_t>(Op::RET));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("2DROP: drop top two items")
+  {
+    // 2DROP ( a b -- )
+    v4front_err err = v4front_compile(": TEST 2DROP ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 1);
+
+    // Should contain: DROP, DROP, RET
+    const uint8_t* code = buf.words[0].code;
+    CHECK(code[0] == static_cast<uint8_t>(Op::DROP));
+    CHECK(code[1] == static_cast<uint8_t>(Op::DROP));
+    CHECK(code[2] == static_cast<uint8_t>(Op::RET));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("2SWAP: swap top two pairs")
+  {
+    // 2SWAP ( a b c d -- c d a b )
+    v4front_err err = v4front_compile(": TEST 2SWAP ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 1);
+
+    // Should contain: ROT, TOR, ROT, FROMR, RET
+    const uint8_t* code = buf.words[0].code;
+    CHECK(code[0] == static_cast<uint8_t>(Op::TOR));
+    CHECK(code[1] == static_cast<uint8_t>(Op::SWAP));
+    CHECK(code[2] == static_cast<uint8_t>(Op::FROMR));
+    CHECK(code[3] == static_cast<uint8_t>(Op::SWAP));
+    // Second ROT
+    CHECK(code[4] == static_cast<uint8_t>(Op::TOR));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("2OVER: copy second pair")
+  {
+    // 2OVER ( a b c d -- a b c d a b )
+    v4front_err err = v4front_compile(": TEST 2OVER ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 1);
+
+    // Should contain: TOR, TOR, OVER, OVER, FROMR, FROMR, then 2SWAP
+    const uint8_t* code = buf.words[0].code;
+    CHECK(code[0] == static_cast<uint8_t>(Op::TOR));
+    CHECK(code[1] == static_cast<uint8_t>(Op::TOR));
+    CHECK(code[2] == static_cast<uint8_t>(Op::OVER));
+    CHECK(code[3] == static_cast<uint8_t>(Op::OVER));
+    CHECK(code[4] == static_cast<uint8_t>(Op::FROMR));
+    CHECK(code[5] == static_cast<uint8_t>(Op::FROMR));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("Double-cell operations in expressions")
+  {
+    v4front_err err = v4front_compile("1 2 2DUP 3 4 2SWAP 2DROP", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+}
+
+TEST_CASE("Composite words: memory addition")
+{
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("+!: add to memory")
+  {
+    // +! ( n addr -- )
+    v4front_err err = v4front_compile(": TEST +! ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 1);
+
+    // Should contain: DUP, TOR, LOAD, ADD, FROMR, STORE, RET
+    const uint8_t* code = buf.words[0].code;
+    CHECK(code[0] == static_cast<uint8_t>(Op::DUP));
+    CHECK(code[1] == static_cast<uint8_t>(Op::TOR));
+    CHECK(code[2] == static_cast<uint8_t>(Op::LOAD));
+    CHECK(code[3] == static_cast<uint8_t>(Op::ADD));
+    CHECK(code[4] == static_cast<uint8_t>(Op::FROMR));
+    CHECK(code[5] == static_cast<uint8_t>(Op::STORE));
+    CHECK(code[6] == static_cast<uint8_t>(Op::RET));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("+! in expression")
+  {
+    v4front_err err = v4front_compile("5 1000 +!", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    bool has_load = false;
+    bool has_store = false;
+    bool has_add = false;
+    for (size_t i = 0; i < buf.size; i++)
+    {
+      if (buf.data[i] == static_cast<uint8_t>(Op::LOAD))
+        has_load = true;
+      if (buf.data[i] == static_cast<uint8_t>(Op::STORE))
+        has_store = true;
+      if (buf.data[i] == static_cast<uint8_t>(Op::ADD))
+        has_add = true;
+    }
+    CHECK(has_load);
+    CHECK(has_store);
+    CHECK(has_add);
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("+! with calculation")
+  {
+    v4front_err err = v4front_compile("10 5 + 1000 +!", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+}
+
+TEST_CASE("Composite words: boolean constants")
+{
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("TRUE: true flag constant")
+  {
+    // TRUE ( -- -1 )
+    v4front_err err = v4front_compile(": TEST TRUE ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 1);
+
+    // Should contain: LITN1, RET
+    const uint8_t* code = buf.words[0].code;
+    CHECK(code[0] == static_cast<uint8_t>(Op::LITN1));
+    CHECK(code[1] == static_cast<uint8_t>(Op::RET));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("FALSE: false flag constant")
+  {
+    // FALSE ( -- 0 )
+    v4front_err err = v4front_compile(": TEST FALSE ;", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 1);
+
+    // Should contain: LIT0, RET
+    const uint8_t* code = buf.words[0].code;
+    CHECK(code[0] == static_cast<uint8_t>(Op::LIT0));
+    CHECK(code[1] == static_cast<uint8_t>(Op::RET));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("TRUE and FALSE in expressions")
+  {
+    v4front_err err = v4front_compile("TRUE FALSE", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+
+  SUBCASE("TRUE and FALSE case insensitive")
+  {
+    v4front_err err = v4front_compile("true false TrUe FaLsE", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    v4front_free(&buf);
+  }
+}
