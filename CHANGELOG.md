@@ -1,6 +1,15 @@
 # V4-front Changelog
 All notable additions are listed here.
 
+## [0.2.3] - 2025-10-29
+
+### Fixed
+- **Type Consistency**
+  - Fixed C/C++ type mismatch for `v4front_err_t` in `errors.hpp`
+  - Changed from `int` to `int32_t` to match `errors.h` definition
+  - Added `#include <stdint.h>` for portable type definitions
+  - Ensures consistent error type across C and C++ interfaces
+
 ## [0.2.2] - 2025-01-10
 
 ### Changed

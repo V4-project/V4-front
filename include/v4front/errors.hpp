@@ -66,9 +66,10 @@ inline bool is_error(FrontErr e)
 
 // Forward declare v4front_err_t from errors.h
 #ifndef V4FRONT_ERRORS_H_INCLUDED
+#include <stdint.h>
 extern "C"
 {
-  typedef int v4front_err_t;
+  typedef int32_t v4front_err_t;
   const char* v4front_err_str(v4front_err_t err);
 }
 #endif
