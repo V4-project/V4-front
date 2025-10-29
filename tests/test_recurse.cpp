@@ -28,7 +28,7 @@ TEST_CASE("RECURSE in word definition")
     // Check that word bytecode contains CALL instruction
     const uint8_t* code = buf.words[0].code;
     bool found_call = false;
-    for (int i = 0; i < buf.words[0].code_len - 2; i++)
+    for (uint32_t i = 0; i < buf.words[0].code_len - 2; i++)
     {
       if (code[i] == 0x50)
       {  // CALL opcode
@@ -60,7 +60,7 @@ TEST_CASE("RECURSE in word definition")
     // Check that FACTORIAL contains CALL to itself (word index 1)
     const uint8_t* code = buf.words[1].code;
     bool found_call = false;
-    for (int i = 0; i < buf.words[1].code_len - 2; i++)
+    for (uint32_t i = 0; i < buf.words[1].code_len - 2; i++)
     {
       if (code[i] == 0x50)
       {  // CALL opcode
@@ -92,7 +92,7 @@ TEST_CASE("RECURSE in word definition")
     // Check that word bytecode contains two CALL instructions to itself
     const uint8_t* code = buf.words[0].code;
     int call_count = 0;
-    for (int i = 0; i < buf.words[0].code_len - 2; i++)
+    for (uint32_t i = 0; i < buf.words[0].code_len - 2; i++)
     {
       if (code[i] == 0x50)
       {  // CALL opcode
