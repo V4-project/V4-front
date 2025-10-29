@@ -78,6 +78,22 @@ TEST_CASE("Comparison operators compile correctly")
     CHECK(buf.data[10] == static_cast<uint8_t>(Op::GE));
     v4front_free(&buf);
   }
+
+  SUBCASE("Unsigned less than: 3 5 U<")
+  {
+    v4front_err err = v4front_compile("3 5 U<", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::LTU));
+    v4front_free(&buf);
+  }
+
+  SUBCASE("Unsigned less than or equal: 3 5 U<=")
+  {
+    v4front_err err = v4front_compile("3 5 U<=", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::LEU));
+    v4front_free(&buf);
+  }
 }
 
 TEST_CASE("Complex comparison expressions")

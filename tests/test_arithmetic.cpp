@@ -163,3 +163,69 @@ TEST_CASE("arithmetic: literals still work")
   CHECK(read_u32_le(&buf.data[1]) == 42u);
   CHECK(buf.data[5] == static_cast<uint8_t>(Op::RET));
 }
+
+TEST_CASE("arithmetic: 1+ (increment)")
+{
+  V4FrontBuf buf{};
+  BufferGuard guard(&buf);
+  char err[128];
+
+  int rc = v4front_compile("5 1+", &buf, err, sizeof(err));
+  CHECK(rc == 0);
+  REQUIRE(buf.size == 7);  // LIT 5, INC, RET
+
+  size_t offset = 0;
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(Op::LIT));
+  CHECK(read_u32_le(&buf.data[offset]) == 5u);
+  offset += 4;
+
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(Op::INC));
+  CHECK(buf.data[offset] == static_cast<uint8_t>(Op::RET));
+}
+
+TEST_CASE("arithmetic: 1- (decrement)")
+{
+  V4FrontBuf buf{};
+  BufferGuard guard(&buf);
+  char err[128];
+
+  int rc = v4front_compile("10 1-", &buf, err, sizeof(err));
+  CHECK(rc == 0);
+  REQUIRE(buf.size == 7);  // LIT 10, DEC, RET
+
+  size_t offset = 0;
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(Op::LIT));
+  CHECK(read_u32_le(&buf.data[offset]) == 10u);
+  offset += 4;
+
+  CHECK(buf.data[offset++] == static_cast<uint8_t>(Op::DEC));
+  CHECK(buf.data[offset] == static_cast<uint8_t>(Op::RET));
+}
+
+TEST_CASE("arithmetic: U/ (unsigned division)")
+{
+  V4FrontBuf buf{};
+  BufferGuard guard(&buf);
+  char err[128];
+
+  int rc = v4front_compile("100 10 U/", &buf, err, sizeof(err));
+  CHECK(rc == 0);
+  REQUIRE(buf.size == 12);  // LIT 100, LIT 10, DIVU, RET
+
+  CHECK(buf.data[10] == static_cast<uint8_t>(Op::DIVU));
+  CHECK(buf.data[11] == static_cast<uint8_t>(Op::RET));
+}
+
+TEST_CASE("arithmetic: UMOD (unsigned modulus)")
+{
+  V4FrontBuf buf{};
+  BufferGuard guard(&buf);
+  char err[128];
+
+  int rc = v4front_compile("43 10 UMOD", &buf, err, sizeof(err));
+  CHECK(rc == 0);
+  REQUIRE(buf.size == 12);  // LIT 43, LIT 10, MODU, RET
+
+  CHECK(buf.data[10] == static_cast<uint8_t>(Op::MODU));
+  CHECK(buf.data[11] == static_cast<uint8_t>(Op::RET));
+}

@@ -72,6 +72,10 @@ static const OpcodeMapping OPCODE_TABLE[] = {
     {"*", v4::Op::MUL, true},
     {"/", v4::Op::DIV, true},
     {"MOD", v4::Op::MOD, false},
+    {"1+", v4::Op::INC, false},
+    {"1-", v4::Op::DEC, false},
+    {"U/", v4::Op::DIVU, false},
+    {"UMOD", v4::Op::MODU, false},
 
     // Comparison operators
     {"=", v4::Op::EQ, true},
@@ -82,16 +86,25 @@ static const OpcodeMapping OPCODE_TABLE[] = {
     {"<=", v4::Op::LE, true},
     {">", v4::Op::GT, true},
     {">=", v4::Op::GE, true},
+    {"U<", v4::Op::LTU, false},
+    {"U<=", v4::Op::LEU, false},
 
     // Bitwise operators
     {"AND", v4::Op::AND, false},
     {"OR", v4::Op::OR, false},
     {"XOR", v4::Op::XOR, false},
     {"INVERT", v4::Op::INVERT, false},
+    {"LSHIFT", v4::Op::SHL, false},
+    {"RSHIFT", v4::Op::SHR, false},
+    {"ARSHIFT", v4::Op::SAR, false},
 
     // Memory access
     {"@", v4::Op::LOAD, true},
     {"!", v4::Op::STORE, true},
+    {"C@", v4::Op::LOAD8U, false},
+    {"C!", v4::Op::STORE8, false},
+    {"W@", v4::Op::LOAD16U, false},
+    {"W!", v4::Op::STORE16, false},
 
     // Local variable access (optimized for indices 0 and 1)
     {"L@0", v4::Op::LGET0, false},

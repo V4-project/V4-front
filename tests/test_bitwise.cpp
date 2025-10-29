@@ -47,6 +47,30 @@ TEST_CASE("Bitwise operators compile correctly")
     CHECK(buf.data[5] == static_cast<uint8_t>(Op::INVERT));
     v4front_free(&buf);
   }
+
+  SUBCASE("LSHIFT: 1 3 LSHIFT (left shift)")
+  {
+    v4front_err err = v4front_compile("1 3 LSHIFT", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::SHL));
+    v4front_free(&buf);
+  }
+
+  SUBCASE("RSHIFT: 8 2 RSHIFT (logical right shift)")
+  {
+    v4front_err err = v4front_compile("8 2 RSHIFT", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::SHR));
+    v4front_free(&buf);
+  }
+
+  SUBCASE("ARSHIFT: -8 2 ARSHIFT (arithmetic right shift)")
+  {
+    v4front_err err = v4front_compile("-8 2 ARSHIFT", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.data[10] == static_cast<uint8_t>(Op::SAR));
+    v4front_free(&buf);
+  }
 }
 
 TEST_CASE("Complex bitwise expressions")

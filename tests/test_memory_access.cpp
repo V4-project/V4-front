@@ -258,3 +258,121 @@ TEST_CASE("Case insensitive @ and !")
     v4front_free(&buf);
   }
 }
+
+TEST_CASE("Byte memory access (C@ and C!)")
+{
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("C@ (byte fetch)")
+  {
+    v4front_err err = v4front_compile("1000 C@", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    // Should contain: LIT 1000, LOAD8U, RET
+    CHECK(buf.data[0] == static_cast<uint8_t>(Op::LIT));
+    CHECK(buf.data[5] == static_cast<uint8_t>(Op::LOAD8U));
+    CHECK(buf.data[6] == static_cast<uint8_t>(Op::RET));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("C! (byte store)")
+  {
+    v4front_err err = v4front_compile("42 1000 C!", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    // Find STORE8 instruction
+    bool found_store8 = false;
+    for (size_t i = 0; i < buf.size; i++)
+    {
+      if (buf.data[i] == static_cast<uint8_t>(Op::STORE8))
+      {
+        found_store8 = true;
+        break;
+      }
+    }
+    CHECK(found_store8);
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("C@ and C! combined")
+  {
+    v4front_err err = v4front_compile("100 C@ 200 C!", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    bool has_load8 = false;
+    bool has_store8 = false;
+    for (size_t i = 0; i < buf.size; i++)
+    {
+      if (buf.data[i] == static_cast<uint8_t>(Op::LOAD8U))
+        has_load8 = true;
+      if (buf.data[i] == static_cast<uint8_t>(Op::STORE8))
+        has_store8 = true;
+    }
+    CHECK(has_load8);
+    CHECK(has_store8);
+
+    v4front_free(&buf);
+  }
+}
+
+TEST_CASE("Halfword memory access (W@ and W!)")
+{
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("W@ (halfword fetch)")
+  {
+    v4front_err err = v4front_compile("1000 W@", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    // Should contain: LIT 1000, LOAD16U, RET
+    CHECK(buf.data[0] == static_cast<uint8_t>(Op::LIT));
+    CHECK(buf.data[5] == static_cast<uint8_t>(Op::LOAD16U));
+    CHECK(buf.data[6] == static_cast<uint8_t>(Op::RET));
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("W! (halfword store)")
+  {
+    v4front_err err = v4front_compile("1234 1000 W!", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    // Find STORE16 instruction
+    bool found_store16 = false;
+    for (size_t i = 0; i < buf.size; i++)
+    {
+      if (buf.data[i] == static_cast<uint8_t>(Op::STORE16))
+      {
+        found_store16 = true;
+        break;
+      }
+    }
+    CHECK(found_store16);
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("W@ and W! combined")
+  {
+    v4front_err err = v4front_compile("100 W@ 200 W!", &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+
+    bool has_load16 = false;
+    bool has_store16 = false;
+    for (size_t i = 0; i < buf.size; i++)
+    {
+      if (buf.data[i] == static_cast<uint8_t>(Op::LOAD16U))
+        has_load16 = true;
+      if (buf.data[i] == static_cast<uint8_t>(Op::STORE16))
+        has_store16 = true;
+    }
+    CHECK(has_load16);
+    CHECK(has_store16);
+
+    v4front_free(&buf);
+  }
+}
