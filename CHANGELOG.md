@@ -1,6 +1,39 @@
 # V4-front Changelog
 All notable additions are listed here.
 
+## [0.3.1] - 2025-01-30
+
+### Added
+
+**Zero Comparison Words**
+- **0=** ( n -- flag ) - Test if zero (LIT0 EQ)
+- **0<** ( n -- flag ) - Test if less than zero (LIT0 LT)
+- **0>** ( n -- flag ) - Test if greater than zero (LIT0 GT)
+
+**Double-Cell Stack Operations**
+- **2DUP** ( a b -- a b a b ) - Duplicate top two items (OVER OVER)
+- **2DROP** ( a b -- ) - Drop top two items (DROP DROP)
+- **2SWAP** ( a b c d -- c d a b ) - Swap top two pairs (ROT >R ROT R>)
+- **2OVER** ( a b c d -- a b c d a b ) - Copy second pair
+
+**Memory Addition**
+- **+!** ( n addr -- ) - Add to memory location (DUP >R @ + R> !)
+
+**Boolean Constants**
+- **TRUE** ( -- -1 ) - True flag constant (LITN1)
+- **FALSE** ( -- 0 ) - False flag constant (LIT0)
+
+### Changed
+
+**Code Quality**
+- Added `emit_rot_instruction()` helper function for ROT implementation reuse
+- Improved code maintainability by using shared helper in 2SWAP and 2OVER
+
+**Testing**
+- Added 20+ comprehensive test cases for new words in test_composite.cpp
+- Tests verify bytecode generation, expression usage, and case-insensitivity
+- All 28 test suites continue to pass
+
 ## [0.3.0] - 2025-01-30
 
 ### Added
