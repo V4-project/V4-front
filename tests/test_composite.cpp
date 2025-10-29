@@ -297,7 +297,8 @@ TEST_CASE("Composite words: zero comparisons")
 
   SUBCASE("Zero comparisons in expressions")
   {
-    v4front_err err = v4front_compile("0 0= 5 0= -3 0< 10 0>", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile("0 0= 5 0= -3 0< 10 0>", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
@@ -380,7 +381,8 @@ TEST_CASE("Composite words: double-cell stack operations")
 
   SUBCASE("Double-cell operations in expressions")
   {
-    v4front_err err = v4front_compile("1 2 2DUP 3 4 2SWAP 2DROP", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile("1 2 2DUP 3 4 2SWAP 2DROP", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
@@ -487,7 +489,8 @@ TEST_CASE("Composite words: boolean constants")
 
   SUBCASE("TRUE and FALSE case insensitive")
   {
-    v4front_err err = v4front_compile("true false TrUe FaLsE", &buf, errmsg, sizeof(errmsg));
+    v4front_err err =
+        v4front_compile("true false TrUe FaLsE", &buf, errmsg, sizeof(errmsg));
     CHECK(err == FrontErr::OK);
     v4front_free(&buf);
   }
