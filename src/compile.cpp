@@ -1498,6 +1498,33 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
 
       continue;
     }
+    else if (str_eq_ci(token, "RECURSE"))
+    {
+      // RECURSE: call the currently-being-defined word recursively
+      if (!in_definition)
+      {
+        if (error_pos)
+          *error_pos = token_start;
+        CLEANUP_AND_RETURN(FrontErr::RecurseOutsideWord);
+      }
+
+      // Emit CALL to the current word (which will be at index word_count)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::CALL))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+
+      // Emit the index as 16-bit little-endian
+      int16_t word_idx = static_cast<int16_t>(word_count);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(word_idx & 0xFF))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>((word_idx >> 8) & 0xFF))) !=
+          FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+
+      continue;
+    }
 
     // Try looking up word in dictionary
     {
