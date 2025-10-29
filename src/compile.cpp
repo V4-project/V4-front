@@ -1610,6 +1610,203 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
         CLEANUP_AND_RETURN(err);
       continue;
     }
+    // Composite words (expanded to multiple opcodes)
+    else if (str_eq_ci(token, "ROT"))
+    {
+      // ROT ( a b c -- b c a ): >R SWAP R> SWAP
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::TOR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SWAP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::FROMR))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SWAP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "NIP"))
+    {
+      // NIP ( a b -- b ): SWAP DROP
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SWAP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "TUCK"))
+    {
+      // TUCK ( a b -- b a b ): SWAP OVER
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SWAP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "NEGATE"))
+    {
+      // NEGATE ( n -- -n ): 0 SWAP -
+      // Emit: LIT 0, SWAP, SUB
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LIT0))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SWAP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SUB))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "?DUP"))
+    {
+      // ?DUP ( x -- 0 | x x ): if x is zero, leave it; if non-zero, duplicate
+      // Bytecode: DUP, DUP, JZ +1 (skip next), DUP
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DUP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DUP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // JZ offset +1 (skip the next DUP instruction, which is 1 byte)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::JZ))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // Offset: +1 byte (skip DUP), little-endian int16
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 1)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // The DUP that gets executed if non-zero
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DUP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "ABS"))
+    {
+      // ABS ( n -- |n| ): if n < 0, negate it
+      // Bytecode: DUP, LIT0, LT, JZ skip_negate, LIT0, SWAP, SUB, skip_negate:
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DUP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LIT0))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LT))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // JZ offset +3 (skip LIT0, SWAP, SUB)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::JZ))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 3)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // NEGATE sequence: LIT0, SWAP, SUB
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LIT0))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SWAP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SUB))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "MIN"))
+    {
+      // MIN ( a b -- min ): OVER OVER < IF DROP ELSE SWAP DROP THEN
+      // Bytecode: OVER, OVER, LT, JZ else_branch, DROP, JMP end, else_branch: SWAP, DROP, end:
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LT))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // JZ offset to else_branch (+4 bytes: DROP + JMP 3)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::JZ))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 4)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // True branch: DROP (keep first)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // JMP to end (+2 bytes: SWAP, DROP)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::JMP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 2)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // Else branch: SWAP, DROP (keep second)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SWAP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
+    else if (str_eq_ci(token, "MAX"))
+    {
+      // MAX ( a b -- max ): OVER OVER > IF DROP ELSE SWAP DROP THEN
+      // Same as MIN but with GT instead of LT
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::OVER))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::GT))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // JZ offset to else_branch (+4 bytes: DROP + JMP 3)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::JZ))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 4)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // True branch: DROP (keep first)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // JMP to end (+2 bytes: SWAP, DROP)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::JMP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 2)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // Else branch: SWAP, DROP (keep second)
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SWAP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::DROP))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      continue;
+    }
 
     // Try matching simple opcodes using dispatch table
     v4::Op opcode;
