@@ -1354,6 +1354,144 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
 
       continue;
     }
+    else if (str_eq_ci(token, "L@"))
+    {
+      // L@: get local variable (LGET)
+      // Skip whitespace and get next token (the local variable index)
+      while (*p && isspace((unsigned char)*p))
+        p++;
+
+      if (!*p)
+      {
+        // No token after L@
+        if (error_pos)
+          *error_pos = token_start;
+        CLEANUP_AND_RETURN(FrontErr::MissingLocalIdx);
+      }
+
+      // Extract index token
+      const char* idx_token_start = p;
+      while (*p && !isspace((unsigned char)*p))
+        p++;
+      size_t idx_token_len = p - idx_token_start;
+      if (idx_token_len >= sizeof(token))
+        idx_token_len = sizeof(token) - 1;
+
+      char idx_token[MAX_TOKEN_LEN];
+      memcpy(idx_token, idx_token_start, idx_token_len);
+      idx_token[idx_token_len] = '\0';
+
+      // Parse index as integer
+      int32_t local_idx;
+      if (!try_parse_int(idx_token, &local_idx) || local_idx < 0 || local_idx > 255)
+      {
+        if (error_pos)
+          *error_pos = idx_token_start;
+        CLEANUP_AND_RETURN(FrontErr::InvalidLocalIdx);
+      }
+
+      // Emit: [LGET] [idx8]
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LGET))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(local_idx))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+
+      continue;
+    }
+    else if (str_eq_ci(token, "L!"))
+    {
+      // L!: set local variable (LSET)
+      // Skip whitespace and get next token (the local variable index)
+      while (*p && isspace((unsigned char)*p))
+        p++;
+
+      if (!*p)
+      {
+        // No token after L!
+        if (error_pos)
+          *error_pos = token_start;
+        CLEANUP_AND_RETURN(FrontErr::MissingLocalIdx);
+      }
+
+      // Extract index token
+      const char* idx_token_start = p;
+      while (*p && !isspace((unsigned char)*p))
+        p++;
+      size_t idx_token_len = p - idx_token_start;
+      if (idx_token_len >= sizeof(token))
+        idx_token_len = sizeof(token) - 1;
+
+      char idx_token[MAX_TOKEN_LEN];
+      memcpy(idx_token, idx_token_start, idx_token_len);
+      idx_token[idx_token_len] = '\0';
+
+      // Parse index as integer
+      int32_t local_idx;
+      if (!try_parse_int(idx_token, &local_idx) || local_idx < 0 || local_idx > 255)
+      {
+        if (error_pos)
+          *error_pos = idx_token_start;
+        CLEANUP_AND_RETURN(FrontErr::InvalidLocalIdx);
+      }
+
+      // Emit: [LSET] [idx8]
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LSET))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(local_idx))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+
+      continue;
+    }
+    else if (str_eq_ci(token, "L>!"))
+    {
+      // L>!: tee local variable (LTEE) - store and keep value on stack
+      // Skip whitespace and get next token (the local variable index)
+      while (*p && isspace((unsigned char)*p))
+        p++;
+
+      if (!*p)
+      {
+        // No token after L>!
+        if (error_pos)
+          *error_pos = token_start;
+        CLEANUP_AND_RETURN(FrontErr::MissingLocalIdx);
+      }
+
+      // Extract index token
+      const char* idx_token_start = p;
+      while (*p && !isspace((unsigned char)*p))
+        p++;
+      size_t idx_token_len = p - idx_token_start;
+      if (idx_token_len >= sizeof(token))
+        idx_token_len = sizeof(token) - 1;
+
+      char idx_token[MAX_TOKEN_LEN];
+      memcpy(idx_token, idx_token_start, idx_token_len);
+      idx_token[idx_token_len] = '\0';
+
+      // Parse index as integer
+      int32_t local_idx;
+      if (!try_parse_int(idx_token, &local_idx) || local_idx < 0 || local_idx > 255)
+      {
+        if (error_pos)
+          *error_pos = idx_token_start;
+        CLEANUP_AND_RETURN(FrontErr::InvalidLocalIdx);
+      }
+
+      // Emit: [LTEE] [idx8]
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LTEE))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(local_idx))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+
+      continue;
+    }
 
     // Try looking up word in dictionary
     {
