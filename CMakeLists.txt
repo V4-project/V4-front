@@ -43,7 +43,7 @@ elseif(V4_FETCH)
   include(FetchContent)
 
   set(V4_GIT_REPO
-      "https://github.com/kirisaki/v4.git"
+      "https://github.com/V4-project/V4.git"
       CACHE STRING "V4 Git repository")
   set(V4_GIT_TAG
       "main"
