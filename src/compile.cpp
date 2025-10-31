@@ -1303,6 +1303,32 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
 
       continue;
     }
+    else if (str_eq_ci(token, "EMIT"))
+    {
+      // EMIT: output one character ( c -- )
+      // Emits: SYS 0x30
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SYS))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0x30)) !=
+          FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+
+      continue;
+    }
+    else if (str_eq_ci(token, "KEY"))
+    {
+      // KEY: input one character ( -- c )
+      // Emits: SYS 0x31
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SYS))) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0x31)) !=
+          FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+
+      continue;
+    }
     else if (str_eq_ci(token, "L++"))
     {
       // L++: increment local variable (LINC)

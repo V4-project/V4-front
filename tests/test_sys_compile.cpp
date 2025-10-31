@@ -199,3 +199,159 @@ TEST_CASE("SYS instruction with context")
 
   v4front_context_destroy(ctx);
 }
+
+TEST_CASE("EMIT and KEY compilation")
+{
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("EMIT compiles to SYS 0x30")
+  {
+    v4front_err err = v4front_compile("EMIT", &buf, errmsg, sizeof(errmsg));
+    REQUIRE(err == 0);
+
+    // Bytecode verification
+    // [0] = SYS (0x60), [1] = ID (0x30), [2] = RET (0x51)
+    REQUIRE(buf.size >= 3);
+    CHECK(buf.data[0] == 0x60);  // SYS opcode
+    CHECK(buf.data[1] == 0x30);  // SYS_EMIT = 0x30
+    CHECK(buf.data[2] == 0x51);  // RET opcode
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("KEY compiles to SYS 0x31")
+  {
+    v4front_err err = v4front_compile("KEY", &buf, errmsg, sizeof(errmsg));
+    REQUIRE(err == 0);
+
+    // Bytecode verification
+    // [0] = SYS (0x60), [1] = ID (0x31), [2] = RET (0x51)
+    REQUIRE(buf.size >= 3);
+    CHECK(buf.data[0] == 0x60);  // SYS opcode
+    CHECK(buf.data[1] == 0x31);  // SYS_KEY = 0x31
+    CHECK(buf.data[2] == 0x51);  // RET opcode
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("EMIT with character literal: 65 EMIT")
+  {
+    v4front_err err = v4front_compile("65 EMIT", &buf, errmsg, sizeof(errmsg));
+    REQUIRE(err == 0);
+
+    // Expected bytecode:
+    // [0-4]  = LIT 65 (0x00 0x41 0x00 0x00 0x00)
+    // [5]    = SYS (0x60)
+    // [6]    = ID (0x30)
+    // [7]    = RET (0x51)
+    REQUIRE(buf.size >= 8);
+
+    // Check LIT 65
+    CHECK(buf.data[0] == 0x00);  // LIT opcode
+    CHECK(buf.data[1] == 0x41);  // 65 = 'A' (little-endian)
+    CHECK(buf.data[2] == 0x00);
+    CHECK(buf.data[3] == 0x00);
+    CHECK(buf.data[4] == 0x00);
+
+    // Check EMIT (SYS 0x30)
+    CHECK(buf.data[5] == 0x60);  // SYS opcode
+    CHECK(buf.data[6] == 0x30);  // SYS_EMIT
+
+    // Check RET
+    CHECK(buf.data[7] == 0x51);  // RET opcode
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("KEY followed by EMIT: KEY EMIT")
+  {
+    v4front_err err = v4front_compile("KEY EMIT", &buf, errmsg, sizeof(errmsg));
+    REQUIRE(err == 0);
+
+    // Expected: KEY (SYS 0x31), EMIT (SYS 0x30), RET
+    REQUIRE(buf.size >= 5);
+    CHECK(buf.data[0] == 0x60);  // SYS
+    CHECK(buf.data[1] == 0x31);  // SYS_KEY
+    CHECK(buf.data[2] == 0x60);  // SYS
+    CHECK(buf.data[3] == 0x30);  // SYS_EMIT
+    CHECK(buf.data[4] == 0x51);  // RET
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("EMIT case insensitive")
+  {
+    v4front_err err = v4front_compile("emit", &buf, errmsg, sizeof(errmsg));
+    REQUIRE(err == 0);
+
+    REQUIRE(buf.size >= 3);
+    CHECK(buf.data[0] == 0x60);  // SYS opcode
+    CHECK(buf.data[1] == 0x30);  // SYS_EMIT
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("KEY case insensitive")
+  {
+    v4front_err err = v4front_compile("key", &buf, errmsg, sizeof(errmsg));
+    REQUIRE(err == 0);
+
+    REQUIRE(buf.size >= 3);
+    CHECK(buf.data[0] == 0x60);  // SYS opcode
+    CHECK(buf.data[1] == 0x31);  // SYS_KEY
+
+    v4front_free(&buf);
+  }
+}
+
+TEST_CASE("EMIT and KEY in word definitions")
+{
+  V4FrontContext* ctx = v4front_context_create();
+  REQUIRE(ctx != nullptr);
+
+  V4FrontBuf buf;
+  char errmsg[256];
+
+  SUBCASE("Define word with EMIT")
+  {
+    const char* source = ": PUTC EMIT ; 72 PUTC";  // 'H'
+    v4front_err err =
+        v4front_compile_with_context(ctx, source, &buf, errmsg, sizeof(errmsg));
+    REQUIRE(err == 0);
+
+    // The word should contain: SYS 0x30, RET
+    REQUIRE(buf.word_count == 1);
+    CHECK(std::strcmp(buf.words[0].name, "PUTC") == 0);
+
+    // Check word bytecode
+    REQUIRE(buf.words[0].code_len >= 3);
+    CHECK(buf.words[0].code[0] == 0x60);  // SYS
+    CHECK(buf.words[0].code[1] == 0x30);  // SYS_EMIT
+    CHECK(buf.words[0].code[2] == 0x51);  // RET
+
+    v4front_free(&buf);
+  }
+
+  SUBCASE("Define word with KEY")
+  {
+    const char* source = ": GETC KEY ; GETC";
+    v4front_err err =
+        v4front_compile_with_context(ctx, source, &buf, errmsg, sizeof(errmsg));
+    REQUIRE(err == 0);
+
+    // The word should contain: SYS 0x31, RET
+    REQUIRE(buf.word_count == 1);
+    CHECK(std::strcmp(buf.words[0].name, "GETC") == 0);
+
+    // Check word bytecode
+    REQUIRE(buf.words[0].code_len >= 3);
+    CHECK(buf.words[0].code[0] == 0x60);  // SYS
+    CHECK(buf.words[0].code[1] == 0x31);  // SYS_KEY
+    CHECK(buf.words[0].code[2] == 0x51);  // RET
+
+    v4front_free(&buf);
+  }
+
+  v4front_context_destroy(ctx);
+}
