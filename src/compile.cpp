@@ -1665,6 +1665,114 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
 
       continue;
     }
+    else if (str_eq_ci(token, "CONSTANT"))
+    {
+      // CONSTANT: <value> CONSTANT <name>
+      // Extracts the last LIT instruction, creates a word that returns that value
+
+      // Check that we have a LIT instruction at the end of the current bytecode
+      // LIT is 1 byte opcode + 4 bytes value = 5 bytes total
+      if (*current_bc_size < 5 ||
+          (*current_bc)[*current_bc_size - 5] != static_cast<uint8_t>(v4::Op::LIT))
+      {
+        if (error_pos)
+          *error_pos = token_start;
+        CLEANUP_AND_RETURN(FrontErr::ConstantWithoutValue);
+      }
+
+      // Extract the value from the LIT instruction
+      uint32_t lit_offset = *current_bc_size - 4;
+      int32_t const_value = static_cast<int32_t>((*current_bc)[lit_offset]) |
+                            (static_cast<int32_t>((*current_bc)[lit_offset + 1]) << 8) |
+                            (static_cast<int32_t>((*current_bc)[lit_offset + 2]) << 16) |
+                            (static_cast<int32_t>((*current_bc)[lit_offset + 3]) << 24);
+
+      // Remove the LIT instruction from bytecode
+      *current_bc_size -= 5;
+
+      // Get the constant name (next token)
+      if ((err = skip_whitespace_and_comments(&p, error_pos)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+
+      if (!*p)
+      {
+        if (error_pos)
+          *error_pos = token_start;
+        CLEANUP_AND_RETURN(FrontErr::ConstantWithoutName);
+      }
+
+      const char* name_start = p;
+      while (*p && !isspace((unsigned char)*p))
+        p++;
+      size_t name_len = p - name_start;
+
+      if (name_len == 0 || name_len >= MAX_WORD_NAME_LEN)
+      {
+        if (error_pos)
+          *error_pos = name_start;
+        CLEANUP_AND_RETURN(FrontErr::ConstantWithoutName);
+      }
+
+      char const_name[MAX_WORD_NAME_LEN];
+      memcpy(const_name, name_start, name_len);
+      const_name[name_len] = '\0';
+
+      // Check for duplicate word names
+      for (int i = 0; i < word_count; i++)
+      {
+        if (str_eq_ci(word_dict[i].name, const_name))
+        {
+          if (error_pos)
+            *error_pos = name_start;
+          CLEANUP_AND_RETURN(FrontErr::DuplicateWord);
+        }
+      }
+
+      // Check dictionary full
+      if (word_count >= MAX_WORDS)
+      {
+        if (error_pos)
+          *error_pos = name_start;
+        CLEANUP_AND_RETURN(FrontErr::DictionaryFull);
+      }
+
+      // Create bytecode for the constant: LIT <value> ; RET
+      uint8_t* const_bc = nullptr;
+      uint32_t const_bc_size = 0;
+      uint32_t const_bc_cap = 0;
+
+      // Emit LIT
+      if ((err = append_byte(&const_bc, &const_bc_size, &const_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LIT))) != FrontErr::OK)
+      {
+        free(const_bc);
+        CLEANUP_AND_RETURN(err);
+      }
+
+      // Emit value
+      if ((err = append_i32_le(&const_bc, &const_bc_size, &const_bc_cap, const_value)) !=
+          FrontErr::OK)
+      {
+        free(const_bc);
+        CLEANUP_AND_RETURN(err);
+      }
+
+      // Emit RET
+      if ((err = append_byte(&const_bc, &const_bc_size, &const_bc_cap,
+                             static_cast<uint8_t>(v4::Op::RET))) != FrontErr::OK)
+      {
+        free(const_bc);
+        CLEANUP_AND_RETURN(err);
+      }
+
+      // Add to word dictionary
+      memcpy(word_dict[word_count].name, const_name, name_len + 1);
+      word_dict[word_count].code = const_bc;
+      word_dict[word_count].code_len = const_bc_size;
+      word_count++;
+
+      continue;
+    }
 
     // Try looking up word in dictionary
     {

@@ -43,3 +43,5 @@ V4FRONT_ERR(MissingLocalIdx,      -33, "L++, L--, L@, L!, or L>! without local v
 V4FRONT_ERR(InvalidLocalIdx,      -34, "local variable index out of range (0-255)")
 V4FRONT_ERR(RecurseOutsideWord,   -35, "RECURSE outside word definition")
 V4FRONT_ERR(UnterminatedComment,  -36, "unterminated comment")
+V4FRONT_ERR(ConstantWithoutValue, -37, "CONSTANT without value")
+V4FRONT_ERR(ConstantWithoutName,  -38, "CONSTANT without name")
