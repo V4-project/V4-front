@@ -47,6 +47,37 @@ All notable additions are listed here.
 - 15 new test cases covering all CONSTANT scenarios
 - Test suite expanded from 30 to 31 test suites
 
+**VARIABLE Keyword**
+- **`VARIABLE`** - Define named variables with `VARIABLE <name>` syntax
+  - Allocates 4 bytes from data space for each variable
+  - Creates a word that returns the variable's memory address
+  - Variables are 4-byte aligned for optimal memory access
+  - Default data space: 0x10000-0x1FFFF (64KB at 64KB offset)
+  - Can be configured with DATA_SPACE_BASE and DATA_SPACE_SIZE macros
+  - Usage examples:
+    - `VARIABLE counter`
+    - `100 counter !` (store 100 to counter)
+    - `counter @` (fetch value from counter)
+    - `VARIABLE X  VARIABLE Y  10 X !  20 Y !`
+  - Works with all memory access operators: @, !, C@, C!, W@, W!, +!
+
+**Data Space Management**
+- New DataSpace class for memory allocation
+  - Manages address allocation for VARIABLE definitions
+  - 4-byte alignment for all allocations
+  - Tracks HERE pointer (next available address)
+  - Prevents overflow with DataSpaceExhausted error
+
+**Error Handling**
+- New error codes:
+  - `VariableWithoutName` (-39) - VARIABLE used without name
+  - `DataSpaceExhausted` (-40) - Data space memory exhausted
+
+**Testing**
+- Added comprehensive test suite for VARIABLE (`test_variable.cpp`)
+- 16 new test cases covering all VARIABLE scenarios
+- Test suite expanded from 31 to 32 test suites
+
 ### Implementation Notes
 - Comment processing integrated into tokenizer via `skip_whitespace_and_comments()`
 - All whitespace-skipping locations updated to handle comments

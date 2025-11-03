@@ -460,6 +460,63 @@ struct ControlFrame
 };
 
 // ---------------------------------------------------------------------------
+// Data space management (for VARIABLE support)
+// ---------------------------------------------------------------------------
+
+// Default data space configuration
+#ifndef DATA_SPACE_BASE
+#define DATA_SPACE_BASE 0x10000  // Default: Start at 64KB
+#endif
+
+#ifndef DATA_SPACE_SIZE
+#define DATA_SPACE_SIZE 0x10000  // Default: 64KB available
+#endif
+
+// Data space allocator for VARIABLE
+struct DataSpace
+{
+  uint32_t base;   // Base address of data space
+  uint32_t here;   // Current allocation pointer (next free address)
+  uint32_t limit;  // End of data space (base + size)
+
+  // Initialize data space
+  void init(uint32_t base_addr, uint32_t size)
+  {
+    base = base_addr;
+    here = base_addr;
+    limit = base_addr + size;
+  }
+
+  // Allocate bytes, returns address (4-byte aligned)
+  FrontErr allot(uint32_t bytes, uint32_t* out_addr)
+  {
+    // Align to 4-byte boundary
+    uint32_t aligned_size = (bytes + 3) & ~3u;
+
+    if (here + aligned_size > limit)
+    {
+      return FrontErr::DataSpaceExhausted;
+    }
+
+    *out_addr = here;
+    here += aligned_size;
+    return FrontErr::OK;
+  }
+
+  // Get current HERE pointer
+  uint32_t get_here() const
+  {
+    return here;
+  }
+
+  // Reset to base (for testing/recompilation)
+  void reset()
+  {
+    here = base;
+  }
+};
+
+// ---------------------------------------------------------------------------
 // Main compilation logic
 // ---------------------------------------------------------------------------
 
@@ -640,6 +697,10 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
   uint8_t* word_bc = nullptr;                       // Bytecode buffer for current word
   uint32_t word_bc_size = 0;                        // Size of current word bytecode
   uint32_t word_bc_cap = 0;                         // Capacity of current word bytecode
+
+  // Data space for VARIABLE support
+  DataSpace data_space;
+  data_space.init(DATA_SPACE_BASE, DATA_SPACE_SIZE);
 
   // Pointers to current bytecode buffer (updated when switching modes)
   uint8_t** current_bc = &bc;
@@ -1769,6 +1830,103 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       memcpy(word_dict[word_count].name, const_name, name_len + 1);
       word_dict[word_count].code = const_bc;
       word_dict[word_count].code_len = const_bc_size;
+      word_count++;
+
+      continue;
+    }
+    else if (str_eq_ci(token, "VARIABLE"))
+    {
+      // VARIABLE: VARIABLE <name>
+      // Allocates 4 bytes from data space, creates a word that returns the address
+
+      // Get the variable name (next token)
+      if ((err = skip_whitespace_and_comments(&p, error_pos)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+
+      if (!*p)
+      {
+        if (error_pos)
+          *error_pos = token_start;
+        CLEANUP_AND_RETURN(FrontErr::VariableWithoutName);
+      }
+
+      const char* name_start = p;
+      while (*p && !isspace((unsigned char)*p))
+        p++;
+      size_t name_len = p - name_start;
+
+      if (name_len == 0 || name_len >= MAX_WORD_NAME_LEN)
+      {
+        if (error_pos)
+          *error_pos = name_start;
+        CLEANUP_AND_RETURN(FrontErr::VariableWithoutName);
+      }
+
+      char var_name[MAX_WORD_NAME_LEN];
+      memcpy(var_name, name_start, name_len);
+      var_name[name_len] = '\0';
+
+      // Check for duplicate word names
+      for (int i = 0; i < word_count; i++)
+      {
+        if (str_eq_ci(word_dict[i].name, var_name))
+        {
+          if (error_pos)
+            *error_pos = name_start;
+          CLEANUP_AND_RETURN(FrontErr::DuplicateWord);
+        }
+      }
+
+      // Check dictionary full
+      if (word_count >= MAX_WORDS)
+      {
+        if (error_pos)
+          *error_pos = name_start;
+        CLEANUP_AND_RETURN(FrontErr::DictionaryFull);
+      }
+
+      // Allocate 4 bytes from data space
+      uint32_t var_addr;
+      if ((err = data_space.allot(4, &var_addr)) != FrontErr::OK)
+      {
+        if (error_pos)
+          *error_pos = name_start;
+        CLEANUP_AND_RETURN(err);
+      }
+
+      // Create bytecode for the variable: LIT <address> ; RET
+      uint8_t* var_bc = nullptr;
+      uint32_t var_bc_size = 0;
+      uint32_t var_bc_cap = 0;
+
+      // Emit LIT
+      if ((err = append_byte(&var_bc, &var_bc_size, &var_bc_cap,
+                             static_cast<uint8_t>(v4::Op::LIT))) != FrontErr::OK)
+      {
+        free(var_bc);
+        CLEANUP_AND_RETURN(err);
+      }
+
+      // Emit address
+      if ((err = append_i32_le(&var_bc, &var_bc_size, &var_bc_cap,
+                               static_cast<int32_t>(var_addr))) != FrontErr::OK)
+      {
+        free(var_bc);
+        CLEANUP_AND_RETURN(err);
+      }
+
+      // Emit RET
+      if ((err = append_byte(&var_bc, &var_bc_size, &var_bc_cap,
+                             static_cast<uint8_t>(v4::Op::RET))) != FrontErr::OK)
+      {
+        free(var_bc);
+        CLEANUP_AND_RETURN(err);
+      }
+
+      // Add to word dictionary
+      memcpy(word_dict[word_count].name, var_name, name_len + 1);
+      word_dict[word_count].code = var_bc;
+      word_dict[word_count].code_len = var_bc_size;
       word_count++;
 
       continue;
