@@ -1,6 +1,34 @@
 # V4-front Changelog
 All notable additions are listed here.
 
+## [0.5.0] - 2025-11-03
+
+### Added
+
+**Task Management Opcodes**
+- **SPAWN** (TASK_SPAWN) - Spawn a new task with given word index, priority, and stack sizes
+- **TASK-EXIT** (TASK_EXIT) - Exit current task (does not return)
+- **SLEEP** / **MS** (TASK_SLEEP) - Sleep for specified milliseconds (MS is alias)
+- **YIELD** / **PAUSE** (TASK_YIELD) - Yield CPU to scheduler (PAUSE is alias)
+- **CRITICAL** (CRITICAL_ENTER) - Enter critical section (disable task switching)
+- **UNCRITICAL** (CRITICAL_EXIT) - Exit critical section (re-enable task switching)
+- **SEND** (TASK_SEND) - Send message to target task
+- **RECEIVE** (TASK_RECEIVE) - Non-blocking receive message
+- **RECEIVE-BLOCKING** (TASK_RECEIVE_BLOCKING) - Blocking receive with timeout
+- **ME** (TASK_SELF) - Get current task ID
+- **TASKS** (TASK_COUNT) - Get number of active tasks
+
+### Changed
+
+**Dependencies**
+- Updated to V4 VM v0.9.1 (task system support)
+- Task management opcodes (0x90-0x9A) now available for compilation
+
+**Testing**
+- Added comprehensive test suite for task opcodes (`test_task.cpp`)
+- Test suite expanded from 28 to 29 test suites
+- All tests verify compilation and disassembly of new task management instructions
+
 ## [0.3.1] - 2025-01-30
 
 ### Added

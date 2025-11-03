@@ -112,6 +112,21 @@ static const OpcodeMapping OPCODE_TABLE[] = {
     {"L!0", v4::Op::LSET0, false},
     {"L!1", v4::Op::LSET1, false},
 
+    // Task management
+    {"SPAWN", v4::Op::TASK_SPAWN, false},
+    {"TASK-EXIT", v4::Op::TASK_EXIT, false},
+    {"SLEEP", v4::Op::TASK_SLEEP, false},
+    {"MS", v4::Op::TASK_SLEEP, false},  // alias for SLEEP
+    {"YIELD", v4::Op::TASK_YIELD, false},
+    {"PAUSE", v4::Op::TASK_YIELD, false},  // alias for YIELD
+    {"CRITICAL", v4::Op::CRITICAL_ENTER, false},
+    {"UNCRITICAL", v4::Op::CRITICAL_EXIT, false},
+    {"SEND", v4::Op::TASK_SEND, false},
+    {"RECEIVE", v4::Op::TASK_RECEIVE, false},
+    {"RECEIVE-BLOCKING", v4::Op::TASK_RECEIVE_BLOCKING, false},
+    {"ME", v4::Op::TASK_SELF, false},
+    {"TASKS", v4::Op::TASK_COUNT, false},
+
     // Sentinel (end of table)
     {nullptr, v4::Op::RET, false}};
 

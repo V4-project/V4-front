@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(
   v4front
-  VERSION 0.4.0
+  VERSION 0.5.0
   LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -170,6 +170,7 @@ if(V4FRONT_BUILD_TESTS)
   add_v4front_test(test_local_vars_opt)
   add_v4front_test(test_recurse)
   add_v4front_test(test_bytecode_io)
+  add_v4front_test(test_task)
 
   # KAT tests (requires kat_runner.cpp)
   add_executable(test_kat tests/test_kat.cpp tests/kat_runner.cpp)
