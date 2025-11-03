@@ -1,7 +1,7 @@
 # V4-front Changelog
 All notable additions are listed here.
 
-## [Unreleased]
+## [0.6.0] - 2025-11-04
 
 ### Added
 
