@@ -48,3 +48,6 @@ coverage/
 # Python (cmake-format)
 __pycache__/
 *.pyc
+
+# Planning documents (personal notes)
+planning/

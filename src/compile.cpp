@@ -250,6 +250,69 @@ static void write_error(char* err, size_t err_cap, FrontErr code)
 }
 
 // ---------------------------------------------------------------------------
+// Comment handling
+// ---------------------------------------------------------------------------
+
+// Skip whitespace and comments
+// Handles:
+//   - Line comments: \ (backslash) to end of line
+//   - Parenthesized comments: ( ... )
+// Returns:
+//   - OK on success
+//   - UnterminatedComment if ( is not closed
+static FrontErr skip_whitespace_and_comments(const char** p, const char** error_pos)
+{
+  while (true)
+  {
+    // Skip whitespace
+    while (**p && isspace((unsigned char)**p))
+      (*p)++;
+
+    // Check for comments
+    if (**p == '\\')
+    {
+      // Line comment: skip to end of line
+      (*p)++;
+      while (**p && **p != '\n')
+        (*p)++;
+      // Continue to skip more whitespace/comments
+      continue;
+    }
+    else if (**p == '(' && *(*p + 1) && isspace((unsigned char)*(*p + 1)))
+    {
+      // Parenthesized comment: ( must be followed by whitespace to distinguish from
+      // (LOCAL) Skip the opening (
+      (*p)++;
+
+      // Find closing )
+      while (**p && **p != ')')
+        (*p)++;
+
+      if (**p == ')')
+      {
+        (*p)++;  // Skip closing )
+        // Continue to skip more whitespace/comments
+        continue;
+      }
+      else
+      {
+        // Unterminated comment
+        if (error_pos)
+          *error_pos = *p - 1;  // Point to the opening (
+        return FrontErr::UnterminatedComment;
+      }
+    }
+    else
+    {
+      // No more whitespace or comments
+      break;
+    }
+  }
+
+  return FrontErr::OK;
+}
+
+// ---------------------------------------------------------------------------
 // Dynamic bytecode buffer management
 // ---------------------------------------------------------------------------
 
@@ -431,8 +494,9 @@ static FrontErr handle_colon_start(const char** p, bool* in_definition,
   }
 
   // Read next token as word name
-  while (**p && isspace((unsigned char)**p))
-    (*p)++;
+  FrontErr err = skip_whitespace_and_comments(p, error_pos);
+  if (err != FrontErr::OK)
+    return err;
   if (!**p)
   {
     if (error_pos)
@@ -608,9 +672,9 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
 
   while (*p)
   {
-    // Skip whitespace
-    while (*p && isspace((unsigned char)*p))
-      p++;
+    // Skip whitespace and comments
+    if ((err = skip_whitespace_and_comments(&p, error_pos)) != FrontErr::OK)
+      CLEANUP_AND_RETURN(err);
     if (!*p)
       break;
 
@@ -1275,9 +1339,9 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     else if (str_eq_ci(token, "SYS"))
     {
       // SYS: system call with 8-bit ID
-      // Skip whitespace and get next token (the SYS ID)
-      while (*p && isspace((unsigned char)*p))
-        p++;
+      // Skip whitespace and comments, then get next token (the SYS ID)
+      if ((err = skip_whitespace_and_comments(&p, error_pos)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
 
       if (!*p)
       {
@@ -1347,9 +1411,9 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     else if (str_eq_ci(token, "L++"))
     {
       // L++: increment local variable (LINC)
-      // Skip whitespace and get next token (the local variable index)
-      while (*p && isspace((unsigned char)*p))
-        p++;
+      // Skip whitespace and comments, then get next token (the local variable index)
+      if ((err = skip_whitespace_and_comments(&p, error_pos)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
 
       if (!*p)
       {
@@ -1393,9 +1457,9 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     else if (str_eq_ci(token, "L--"))
     {
       // L--: decrement local variable (LDEC)
-      // Skip whitespace and get next token (the local variable index)
-      while (*p && isspace((unsigned char)*p))
-        p++;
+      // Skip whitespace and comments, then get next token (the local variable index)
+      if ((err = skip_whitespace_and_comments(&p, error_pos)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
 
       if (!*p)
       {
@@ -1439,9 +1503,9 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     else if (str_eq_ci(token, "L@"))
     {
       // L@: get local variable (LGET)
-      // Skip whitespace and get next token (the local variable index)
-      while (*p && isspace((unsigned char)*p))
-        p++;
+      // Skip whitespace and comments, then get next token (the local variable index)
+      if ((err = skip_whitespace_and_comments(&p, error_pos)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
 
       if (!*p)
       {
@@ -1485,9 +1549,9 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     else if (str_eq_ci(token, "L!"))
     {
       // L!: set local variable (LSET)
-      // Skip whitespace and get next token (the local variable index)
-      while (*p && isspace((unsigned char)*p))
-        p++;
+      // Skip whitespace and comments, then get next token (the local variable index)
+      if ((err = skip_whitespace_and_comments(&p, error_pos)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
 
       if (!*p)
       {
@@ -1531,9 +1595,9 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     else if (str_eq_ci(token, "L>!"))
     {
       // L>!: tee local variable (LTEE) - store and keep value on stack
-      // Skip whitespace and get next token (the local variable index)
-      while (*p && isspace((unsigned char)*p))
-        p++;
+      // Skip whitespace and comments, then get next token (the local variable index)
+      if ((err = skip_whitespace_and_comments(&p, error_pos)) != FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
 
       if (!*p)
       {

@@ -1,6 +1,35 @@
 # V4-front Changelog
 All notable additions are listed here.
 
+## [Unreleased]
+
+### Added
+
+**Comment Support**
+- **`\` (backslash)** - Line comments: ignore everything from `\` to end of line
+- **`( ... )`** - Parenthesized comments: ignore everything between `(` and `)`
+  - Opening `(` must be followed by whitespace to distinguish from future keywords like `(LOCAL)`
+  - Multi-line comments supported
+  - Nested parentheses not supported (closes at first `)`)
+- Comments can appear anywhere whitespace is allowed, including:
+  - Between tokens in expressions
+  - After keywords like `:`, `SYS`, `L@`, etc.
+  - In word definitions
+  - Before word names in `:` definitions
+
+**Error Handling**
+- New error code: `UnterminatedComment` (-36) - for unclosed `(` comments
+
+**Testing**
+- Added comprehensive test suite for comments (`test_comments.cpp`)
+- 16 new test cases covering all comment scenarios
+- Test suite expanded from 29 to 30 test suites
+
+### Implementation Notes
+- Comment processing integrated into tokenizer via `skip_whitespace_and_comments()`
+- All whitespace-skipping locations updated to handle comments
+- Comments are completely removed during tokenization (zero overhead at runtime)
+
 ## [0.5.0] - 2025-11-03
 
 ### Added
