@@ -18,7 +18,7 @@ option(V4_FETCH "Fetch V4 headers from Git" OFF)
 # V4 Headers and Library (dependency)
 # ------------------------------------------------------------
 if(DEFINED V4_SRC_DIR)
-  # Use V4 source directory (for integration tests with v4vm library)
+  # Use V4 source directory (for integration tests with v4engine library)
   set(_V4_SRC_ROOT "${V4_SRC_DIR}")
   if(NOT EXISTS "${_V4_SRC_ROOT}")
     message(FATAL_ERROR "V4_SRC_DIR not found: ${_V4_SRC_ROOT}")
@@ -43,7 +43,7 @@ elseif(V4_FETCH)
   include(FetchContent)
 
   set(V4_GIT_REPO
-      "https://github.com/V4-project/V4.git"
+      "https://github.com/V4-project/V4-engine.git"
       CACHE STRING "V4 Git repository")
   set(V4_GIT_TAG
       "main"
@@ -69,8 +69,8 @@ else()
     FATAL_ERROR
       "V4 dependency not specified.\n"
       "Use one of:\n"
-      "  -DV4_SRC_DIR=/path/to/V4       (full source, enables integration tests)\n"
-      "  -DV4_INCLUDE_DIR=/path/to/V4/include  (headers only)\n"
+      "  -DV4_SRC_DIR=/path/to/V4-engine       (full source, enables integration tests)\n"
+      "  -DV4_INCLUDE_DIR=/path/to/V4-engine/include  (headers only)\n"
       "  -DV4_FETCH=ON                  (fetch from Git, enables integration tests)")
 endif()
 
@@ -192,10 +192,10 @@ if(V4FRONT_BUILD_TESTS)
   # C test (requires special handling)
   add_v4front_test(test_c SOURCE_FILE tests/test_c.c LANGUAGE CXX)
 
-  # Integration test (requires V4 VM library)
+  # Integration test (requires V4 Engine library)
   if(_V4_HAS_VM)
     add_executable(test_integration tests/test_integration.cpp)
-    target_link_libraries(test_integration PRIVATE v4front v4vm mock_hal)
+    target_link_libraries(test_integration PRIVATE v4front v4engine mock_hal)
     if(MSVC)
       target_compile_definitions(test_integration PRIVATE _HAS_EXCEPTIONS=0
                                                           _CRT_SECURE_NO_WARNINGS)

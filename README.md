@@ -1,6 +1,6 @@
 # V4-front
 
-A Forth compiler frontend for the V4 Virtual Machine.
+A Forth compiler frontend for the V4 Engine.
 
 Compiles Forth source code to V4 bytecode with no exceptions, using a stable C API suitable for early bootstrap stages.
 
@@ -45,9 +45,9 @@ void v4front_free(V4FrontBuf* buf);
 
 ## Build Options
 
-- `-DV4_FETCH=ON` - Fetch V4 from Git (enables integration tests)
-- `-DV4_SRC_DIR=/path/to/V4` - Use local V4 source (enables integration tests)
-- `-DV4_INCLUDE_DIR=/path/to/V4/include` - Use V4 headers only (no integration tests)
+- `-DV4_FETCH=ON` - Fetch V4 Engine from Git (enables integration tests)
+- `-DV4_SRC_DIR=/path/to/V4-engine` - Use local V4 Engine source (enables integration tests)
+- `-DV4_INCLUDE_DIR=/path/to/V4-engine/include` - Use V4 Engine headers only (no integration tests)
 
 ## Example
 
@@ -105,7 +105,7 @@ make format-check
 
 - [Bytecode File Format](docs/bytecode-format.md)
 - [Compiler Specification](docs/compiler-spec.md) (TODO)
-- [V4 VM Documentation](https://github.com/kirisaki/v4)
+- [V4 Engine Documentation](https://github.com/V4-project/V4-engine)
 
 ## License
 
