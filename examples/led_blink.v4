@@ -1,0 +1,26 @@
+\ LED Blink Test using V4-std SYS calls
+\ Tests LED ON/OFF via device-independent API
+\
+\ V4-std SYS IDs:
+\   LED_ON:  0x0100  ( kind role index -- result )
+\   LED_OFF: 0x0101  ( kind role index -- result )
+\
+\ NanoC6 Status LED:
+\   kind=1 (V4DEV_LED), role=1 (V4ROLE_STATUS), index=0
+
+\ Define LED control words
+: led-on   1 1 0 256 SYS drop ;
+: led-off  1 1 0 257 SYS drop ;
+
+\ Blink LED 5 times
+: blink5
+  5 0 DO
+    led-on
+    500 6 SYS   \ DELAY_MS (SYS 0x06)
+    led-off
+    500 6 SYS
+  LOOP
+;
+
+\ Run test
+blink5

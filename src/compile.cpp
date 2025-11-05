@@ -127,6 +127,9 @@ static const OpcodeMapping OPCODE_TABLE[] = {
     {"ME", v4::Op::TASK_SELF, false},
     {"TASKS", v4::Op::TASK_COUNT, false},
 
+    // System calls
+    {"SYS", v4::Op::SYS, false},
+
     // Sentinel (end of table)
     {nullptr, v4::Op::RET, false}};
 
@@ -1397,69 +1400,30 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
         CLEANUP_AND_RETURN(err);
       continue;
     }
-    else if (str_eq_ci(token, "SYS"))
-    {
-      // SYS: system call with 16-bit ID (changed from 8-bit for V4-std compatibility)
-      // Skip whitespace and comments, then get next token (the SYS ID)
-      if ((err = skip_whitespace_and_comments(&p, error_pos)) != FrontErr::OK)
-        CLEANUP_AND_RETURN(err);
-
-      if (!*p)
-      {
-        // No token after SYS
-        if (error_pos)
-          *error_pos = token_start;
-        CLEANUP_AND_RETURN(FrontErr::MissingSysId);
-      }
-
-      // Extract ID token
-      const char* id_token_start = p;
-      while (*p && !isspace((unsigned char)*p))
-        p++;
-      size_t id_token_len = p - id_token_start;
-      if (id_token_len >= sizeof(token))
-        id_token_len = sizeof(token) - 1;
-
-      char id_token[MAX_TOKEN_LEN];
-      memcpy(id_token, id_token_start, id_token_len);
-      id_token[id_token_len] = '\0';
-
-      // Parse ID as integer (now supports 0-65535)
-      int32_t sys_id;
-      if (!try_parse_int(id_token, &sys_id) || sys_id < 0 || sys_id > 0xFFFF)
-      {
-        if (error_pos)
-          *error_pos = id_token_start;
-        CLEANUP_AND_RETURN(FrontErr::InvalidSysId);
-      }
-
-      // Emit: [SYS] [id16_lo] [id16_hi] (little-endian)
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::SYS))) != FrontErr::OK)
-        CLEANUP_AND_RETURN(err);
-      // Emit low byte
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(sys_id & 0xFF))) != FrontErr::OK)
-        CLEANUP_AND_RETURN(err);
-      // Emit high byte
-      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>((sys_id >> 8) & 0xFF))) != FrontErr::OK)
-        CLEANUP_AND_RETURN(err);
-
-      continue;
-    }
+    // SYS is now handled as a primitive (NoImm) - removed special case handling
     else if (str_eq_ci(token, "EMIT"))
     {
       // EMIT: output one character ( c -- )
-      // Emits: SYS 0x0030 (16-bit little-endian)
+      // Emits: LIT 0x30 + SYS (Forth-style)
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::SYS))) != FrontErr::OK)
+                             static_cast<uint8_t>(v4::Op::LIT))) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
+      // Emit 0x30 as 32-bit little-endian
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0x30)) !=
           FrontErr::OK)
         CLEANUP_AND_RETURN(err);
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0x00)) !=
           FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0x00)) !=
+          FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0x00)) !=
+          FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // Emit SYS opcode
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SYS))) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       continue;
@@ -1467,15 +1431,26 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
     else if (str_eq_ci(token, "KEY"))
     {
       // KEY: input one character ( -- c )
-      // Emits: SYS 0x0031 (16-bit little-endian)
+      // Emits: LIT 0x31 + SYS (Forth-style)
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
-                             static_cast<uint8_t>(v4::Op::SYS))) != FrontErr::OK)
+                             static_cast<uint8_t>(v4::Op::LIT))) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
+      // Emit 0x31 as 32-bit little-endian
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0x31)) !=
           FrontErr::OK)
         CLEANUP_AND_RETURN(err);
       if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0x00)) !=
           FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0x00)) !=
+          FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap, 0x00)) !=
+          FrontErr::OK)
+        CLEANUP_AND_RETURN(err);
+      // Emit SYS opcode
+      if ((err = append_byte(current_bc, current_bc_size, current_bc_cap,
+                             static_cast<uint8_t>(v4::Op::SYS))) != FrontErr::OK)
         CLEANUP_AND_RETURN(err);
 
       continue;
