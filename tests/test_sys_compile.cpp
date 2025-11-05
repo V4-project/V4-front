@@ -360,8 +360,8 @@ TEST_CASE("EMIT and KEY compilation")
     CHECK(buf.data[4] == 0x00);
 
     // Check EMIT (LIT 0x30 + SYS)
-    CHECK(buf.data[5] == 0x00);   // LIT opcode
-    CHECK(buf.data[6] == 0x30);   // SYS_EMIT
+    CHECK(buf.data[5] == 0x00);  // LIT opcode
+    CHECK(buf.data[6] == 0x30);  // SYS_EMIT
     CHECK(buf.data[7] == 0x00);
     CHECK(buf.data[8] == 0x00);
     CHECK(buf.data[9] == 0x00);

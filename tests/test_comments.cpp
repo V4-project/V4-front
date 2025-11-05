@@ -177,13 +177,17 @@ TEST_CASE("comments: comment after SYS keyword")
   BufferGuard guard(&buf);
   char err[128];
 
-  int rc = v4front_compile("SYS ( system call ) 10", &buf, err, sizeof(err));
+  int rc = v4front_compile("10 ( system call ) SYS", &buf, err, sizeof(err));
   CHECK(rc == 0);
-  REQUIRE(buf.size == 3);  // SYS 10, RET
+  REQUIRE(buf.size == 7);  // LIT 10, SYS, RET
 
-  CHECK(buf.data[0] == static_cast<uint8_t>(Op::SYS));
+  CHECK(buf.data[0] == static_cast<uint8_t>(Op::LIT));
   CHECK(buf.data[1] == 10);
-  CHECK(buf.data[2] == static_cast<uint8_t>(Op::RET));
+  CHECK(buf.data[2] == 0);
+  CHECK(buf.data[3] == 0);
+  CHECK(buf.data[4] == 0);
+  CHECK(buf.data[5] == static_cast<uint8_t>(Op::SYS));
+  CHECK(buf.data[6] == static_cast<uint8_t>(Op::RET));
 }
 
 TEST_CASE("comments: comment after L@ keyword")

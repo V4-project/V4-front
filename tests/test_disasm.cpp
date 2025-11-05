@@ -122,24 +122,23 @@ TEST_CASE("disasm: REL16 branches (JMP/JZ/JNZ)")
 }
 
 /**
- * @test Disassemble CALL with IDX16 and SYS with IMM8.
- * Bytecode: CALL @321; SYS 7
+ * @test Disassemble CALL with IDX16 and SYS (NoImm).
+ * Bytecode: CALL @321; SYS
  */
-TEST_CASE("disasm: CALL(Idx16) and SYS(I8)")
+TEST_CASE("disasm: CALL(Idx16) and SYS(NoImm)")
 {
   std::vector<uint8_t> bc;
   // CALL @321
   bc.push_back(static_cast<uint8_t>(OP_CALL));
   append_i16(bc, 321);
-  // SYS 7
+  // SYS (no immediate - pops ID from stack)
   bc.push_back(static_cast<uint8_t>(OP_SYS));
-  append_i8(bc, 7);
 
   auto lines = disasm_all(bc.data(), bc.size());
   REQUIRE(lines.size() == 2);
 
   expect_contains_all(lines[0], {"CALL", "@321"});
-  expect_contains_all(lines[1], {"SYS", "7"});
+  expect_contains_all(lines[1], {"SYS"});
 }
 
 /**
@@ -181,14 +180,7 @@ TEST_CASE("disasm: truncated immediates")
     expect_contains_all(lines[0], {"CALL", "<trunc-idx16>"});
   }
 
-  // Case 4: SYS imm8 with 0 imm bytes available
-  {
-    std::vector<uint8_t> bc;
-    bc.push_back(static_cast<uint8_t>(OP_SYS));
-    auto lines = disasm_all(bc.data(), bc.size());
-    REQUIRE(lines.size() == 1);
-    expect_contains_all(lines[0], {"SYS", "<trunc-i8>"});
-  }
+  // Note: SYS no longer has immediates (NoImm), so no truncation case needed
 }
 
 /**

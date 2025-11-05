@@ -59,7 +59,7 @@ TEST_CASE("Bytecode file I/O")
 
   SUBCASE("Save and load with SYS instruction")
   {
-    v4front_err err = v4front_compile("13 1 SYS 0x01", &buf, errmsg, sizeof(errmsg));
+    v4front_err err = v4front_compile("13 1 0x01 SYS", &buf, errmsg, sizeof(errmsg));
     REQUIRE(err == 0);
 
     const char* filename = "test_sys.v4b";
@@ -73,14 +73,13 @@ TEST_CASE("Bytecode file I/O")
     REQUIRE(loaded.size == buf.size);
     CHECK(memcmp(loaded.data, buf.data, buf.size) == 0);
 
-    // Verify SYS instruction is preserved
+    // Verify SYS instruction is preserved (SYS is now NoImm)
     bool found_sys = false;
-    for (size_t i = 0; i < loaded.size - 1; i++)
+    for (size_t i = 0; i < loaded.size; i++)
     {
       if (loaded.data[i] == 0x60)
       {  // SYS opcode
         found_sys = true;
-        CHECK(loaded.data[i + 1] == 0x01);  // SYS ID
         break;
       }
     }
