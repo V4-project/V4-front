@@ -545,6 +545,8 @@ static FrontErr handle_colon_start(const char** p, bool* in_definition,
                                    uint32_t** current_bc_cap, WordDefEntry* word_dict,
                                    int word_count, const char** error_pos)
 {
+  (void)word_dict;  // Unused - word shadowing is allowed
+
   // Check for nested :
   if (*in_definition)
   {
@@ -579,16 +581,8 @@ static FrontErr handle_colon_start(const char** p, bool* in_definition,
   memcpy(current_word_name, name_start, name_len);
   current_word_name[name_len] = '\0';
 
-  // Check for duplicate word names
-  for (int i = 0; i < word_count; i++)
-  {
-    if (str_eq_ci(word_dict[i].name, current_word_name))
-    {
-      if (error_pos)
-        *error_pos = name_start;
-      return FrontErr::DuplicateWord;
-    }
-  }
+  // Allow word redefinition (Forth shadowing semantics)
+  // The VM's vm_find_word() will search backward to find the newest definition
 
   // Check dictionary full
   if (word_count >= MAX_WORDS)
@@ -1764,16 +1758,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       memcpy(const_name, name_start, name_len);
       const_name[name_len] = '\0';
 
-      // Check for duplicate word names
-      for (int i = 0; i < word_count; i++)
-      {
-        if (str_eq_ci(word_dict[i].name, const_name))
-        {
-          if (error_pos)
-            *error_pos = name_start;
-          CLEANUP_AND_RETURN(FrontErr::DuplicateWord);
-        }
-      }
+      // Allow word redefinition (Forth shadowing semantics)
+      // The VM's vm_find_word() will search backward to find the newest definition
 
       // Check dictionary full
       if (word_count >= MAX_WORDS)
@@ -1852,16 +1838,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       memcpy(var_name, name_start, name_len);
       var_name[name_len] = '\0';
 
-      // Check for duplicate word names
-      for (int i = 0; i < word_count; i++)
-      {
-        if (str_eq_ci(word_dict[i].name, var_name))
-        {
-          if (error_pos)
-            *error_pos = name_start;
-          CLEANUP_AND_RETURN(FrontErr::DuplicateWord);
-        }
-      }
+      // Allow word redefinition (Forth shadowing semantics)
+      // The VM's vm_find_word() will search backward to find the newest definition
 
       // Check dictionary full
       if (word_count >= MAX_WORDS)
@@ -1923,7 +1901,8 @@ static FrontErr compile_internal(const char* source, V4FrontBuf* out_buf,
       int word_idx = -1;
 
       // First, search in local word_dict (words defined in this compilation)
-      for (int i = 0; i < word_count; i++)
+      // Search backward to find newest definition (Forth shadowing semantics)
+      for (int i = word_count - 1; i >= 0; i--)
       {
         if (str_eq_ci(token, word_dict[i].name))
         {
@@ -2588,7 +2567,8 @@ extern "C" v4front_err v4front_context_register_word(V4FrontContext* ctx,
     return -1;  // Invalid argument
 
   // Check if word already exists (case-insensitive)
-  for (int i = 0; i < ctx->word_count; i++)
+  // Search backward to update newest definition (Forth shadowing semantics)
+  for (int i = ctx->word_count - 1; i >= 0; i--)
   {
     if (str_eq_ci(ctx->words[i].name, name))
     {
@@ -2641,7 +2621,8 @@ extern "C" int v4front_context_find_word(const V4FrontContext* ctx, const char* 
   if (!ctx || !name)
     return -1;
 
-  for (int i = 0; i < ctx->word_count; i++)
+  // Search backward to find newest definition (Forth shadowing semantics)
+  for (int i = ctx->word_count - 1; i >= 0; i--)
   {
     if (str_eq_ci(ctx->words[i].name, name))
       return ctx->words[i].vm_word_idx;

@@ -174,11 +174,11 @@ TEST_CASE("Bytecode file I/O")
 
     // Check version
     CHECK(header.version_major == 0);
-    CHECK(header.version_minor == 1);
+    CHECK(header.version_minor == 2);
 
-    // Check flags and reserved
+    // Check flags and word_count
     CHECK(header.flags == 0);
-    CHECK(header.reserved == 0);
+    CHECK(header.word_count == 0);
 
     // Check code size
     CHECK(header.code_size == buf.size);

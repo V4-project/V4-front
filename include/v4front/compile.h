@@ -233,15 +233,25 @@ extern "C"
   // V4BytecodeHeader
   //  - File header structure for .v4b bytecode files.
   //  - Contains magic number, version, and metadata.
+  //
+  //  File format v0.2:
+  //    [Header (16 bytes)]
+  //    [Main bytecode (code_size bytes)]
+  //    [Word definitions section]
+  //      For each word:
+  //        [name_len: uint8_t]
+  //        [name: char[name_len]]
+  //        [code_len: uint32_t]
+  //        [code: uint8_t[code_len]]
   // ---------------------------------------------------------------------------
   typedef struct
   {
     uint8_t magic[4];       // Magic number: "V4BC" (0x56 0x34 0x42 0x43)
     uint8_t version_major;  // Major version number (currently 0)
-    uint8_t version_minor;  // Minor version number (currently 1)
+    uint8_t version_minor;  // Minor version number (currently 2)
     uint16_t flags;         // Reserved flags (must be 0)
-    uint32_t code_size;     // Size of bytecode in bytes
-    uint32_t reserved;      // Reserved for future use (must be 0)
+    uint32_t code_size;     // Size of main bytecode in bytes
+    uint32_t word_count;    // Number of word definitions
   } V4BytecodeHeader;
 
   // ---------------------------------------------------------------------------
