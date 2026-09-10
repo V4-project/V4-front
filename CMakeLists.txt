@@ -104,6 +104,10 @@ endif()
 if(V4FRONT_BUILD_TESTS)
   enable_testing()
 
+  # Avoid doctest's std forward declarations, rejected by newer MSVC (C5285).
+  add_library(v4front_test_config INTERFACE)
+  target_compile_definitions(v4front_test_config INTERFACE DOCTEST_CONFIG_USE_STD_HEADERS)
+
   # Helper function to add a V4-front test Usage: add_v4front_test(test_name [SOURCE_FILE
   # source.cpp] [LANGUAGE CXX])
   function(add_v4front_test TEST_NAME)
@@ -116,7 +120,7 @@ if(V4FRONT_BUILD_TESTS)
 
     # Create executable
     add_executable(${TEST_NAME} ${ARG_SOURCE_FILE})
-    target_link_libraries(${TEST_NAME} PRIVATE v4front)
+    target_link_libraries(${TEST_NAME} PRIVATE v4front v4front_test_config)
 
     # Set linker language if specified (for C tests)
     if(ARG_LANGUAGE)
@@ -177,7 +181,7 @@ if(V4FRONT_BUILD_TESTS)
 
   # KAT tests (requires kat_runner.cpp)
   add_executable(test_kat tests/test_kat.cpp tests/kat_runner.cpp)
-  target_link_libraries(test_kat PRIVATE v4front)
+  target_link_libraries(test_kat PRIVATE v4front v4front_test_config)
   if(MSVC)
     target_compile_definitions(test_kat PRIVATE _HAS_EXCEPTIONS=0 _CRT_SECURE_NO_WARNINGS)
     target_compile_options(test_kat PRIVATE /W4 /WX /GR- /EHs- /EHc- /wd4530)
@@ -195,7 +199,8 @@ if(V4FRONT_BUILD_TESTS)
   # Integration test (requires V4 Engine library)
   if(_V4_HAS_VM)
     add_executable(test_integration tests/test_integration.cpp)
-    target_link_libraries(test_integration PRIVATE v4front v4engine mock_hal)
+    target_link_libraries(test_integration PRIVATE v4front v4engine mock_hal
+                                                   v4front_test_config)
     if(MSVC)
       target_compile_definitions(test_integration PRIVATE _HAS_EXCEPTIONS=0
                                                           _CRT_SECURE_NO_WARNINGS)
