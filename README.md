@@ -6,7 +6,7 @@ Compiles Forth source code to V4 bytecode with no exceptions, using a stable C A
 
 ## Features
 
-- **Full Forth compiler**: Arithmetic, comparison, bitwise, stack operations, control flow (IF/THEN/ELSE, DO/LOOP, BEGIN/UNTIL/WHILE/REPEAT/AGAIN), word definitions (`:` `;`), memory access (`@` `!`), SYS instructions for HAL access
+- **Forth-compatible compiler**: Arithmetic, comparison, bitwise, stack operations, control flow (IF/THEN/ELSE, DO/LOOP, BEGIN/UNTIL/WHILE/REPEAT/AGAIN), word definitions (`:` `;`), memory access (`@` `!`), SYS calls through an engine-registered handler
 - **Bytecode file I/O**: Save and load compiled bytecode in `.v4b` format
 - **Incremental compilation**: REPL support with stateful compiler context
 - **Exception-free C++17**: No RTTI, explicit error reporting via return codes
@@ -14,6 +14,20 @@ Compiles Forth source code to V4 bytecode with no exceptions, using a stable C A
 - **Well-tested**: Comprehensive test suite with 900+ assertions using doctest
 
 ## Quick Start
+
+Current local implementation (2026-09-10): word redefinition/shadowing is allowed and `.v4b` writes use format v0.2 (header, main bytecode, named word definitions).
+Some tests still expect duplicate definitions to fail. No test run was performed for this documentation update.
+String-output words such as `."` and `CASE` are not implemented; the supported subset is described below.
+
+In the multi-repository workspace, use local engine source to include local changes:
+
+```bash
+cmake -B build -DV4_SRC_DIR="$PWD/../V4-engine"
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+The following alternative fetches remote source, which may differ from the local engine:
 
 ```bash
 # Build with V4 headers from Git
@@ -89,7 +103,7 @@ if (v4front_load_bytecode("program.v4b", &loaded) == 0) {
   - `DO ... LOOP`, `DO ... +LOOP`
   - `EXIT` (early return)
 - **Word definitions**: `: NAME ... ;`
-- **System calls**: `SYS <id>` (0-255)
+- **System calls**: `arg0 arg1 arg2 sys_id SYS` (32-bit ID on the stack, no immediate operand; one result)
 
 ## Code Formatting
 
