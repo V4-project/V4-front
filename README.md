@@ -16,7 +16,7 @@ Compiles Forth source code to V4 bytecode with no exceptions, using a stable C A
 ## Quick Start
 
 Current local implementation (2026-09-10): word redefinition/shadowing is allowed and `.v4b` writes use format v0.2 (header, main bytecode, named word definitions).
-Some tests still expect duplicate definitions to fail. No test run was performed for this documentation update.
+Redefinition tests check that earlier references retain their target and later references select the newest definition, including case-insensitive names and separate variable storage.
 String-output words such as `."` and `CASE` are not implemented; the supported subset is described below.
 
 In the multi-repository workspace, use local engine source to include local changes:

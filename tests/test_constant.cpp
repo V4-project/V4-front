@@ -221,14 +221,25 @@ TEST_CASE("constant: error - constant without name")
   CHECK(rc == V4FRONT_ERR_ConstantWithoutName);
 }
 
-TEST_CASE("constant: error - duplicate constant name")
+TEST_CASE("constant: redefinition preserves earlier references and shadows later ones")
 {
   V4FrontBuf buf{};
   BufferGuard guard(&buf);
   char err[128];
 
-  int rc = v4front_compile("10 CONSTANT FOO  20 CONSTANT FOO", &buf, err, sizeof(err));
-  CHECK(rc == V4FRONT_ERR_DuplicateWord);
+  int rc =
+      v4front_compile("10 CONSTANT FOO FOO 20 CONSTANT FOO FOO", &buf, err, sizeof(err));
+  REQUIRE(rc == 0);
+  REQUIRE(buf.word_count == 2);
+  REQUIRE(buf.words[0].code_len == 6);
+  REQUIRE(buf.words[1].code_len == 6);
+  CHECK(read_i32_le(buf.words[0].code + 1) == 10);
+  CHECK(read_i32_le(buf.words[1].code + 1) == 20);
+  const uint8_t expected[] = {static_cast<uint8_t>(Op::CALL), 0, 0,
+                              static_cast<uint8_t>(Op::CALL), 1, 0,
+                              static_cast<uint8_t>(Op::RET)};
+  REQUIRE(buf.size == sizeof(expected));
+  CHECK(memcmp(buf.data, expected, sizeof(expected)) == 0);
 }
 
 TEST_CASE("constant: error - constant after non-literal")

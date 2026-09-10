@@ -150,14 +150,16 @@ TEST_CASE("Error position tracking: word definition errors")
     CHECK(error.code == front_err_to_int(FrontErr::UnclosedColon));
   }
 
-  SUBCASE("Duplicate word")
+  SUBCASE("Unknown token in a redefined word")
   {
-    const char* source = ": SQUARE DUP * ; : SQUARE DUP * ;";
+    const char* source = ": SQUARE DUP * ;\n: SQUARE UNKNOWN ;";
     v4front_err err = v4front_compile_ex(source, &buf, &error);
 
     CHECK(err < 0);
-    CHECK(error.code == front_err_to_int(FrontErr::DuplicateWord));
-    CHECK(strcmp(error.token, "SQUARE") == 0);
+    CHECK(error.code == front_err_to_int(FrontErr::UnknownToken));
+    CHECK(strcmp(error.token, "UNKNOWN") == 0);
+    CHECK(error.line == 2);
+    CHECK(error.column == 10);
     v4front_free(&buf);
   }
 }

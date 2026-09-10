@@ -220,11 +220,19 @@ TEST_CASE("Word definition errors")
     v4front_free(&buf);
   }
 
-  SUBCASE("Duplicate word name")
+  SUBCASE("Redefinition preserves earlier calls and selects the new word")
   {
-    v4front_err err = v4front_compile(": DOUBLE DUP + ; : DOUBLE DUP DUP + + ;", &buf,
-                                      errmsg, sizeof(errmsg));
-    CHECK(err == FrontErr::DuplicateWord);
+    v4front_err err =
+        v4front_compile(": DOUBLE DUP + ; DOUBLE : DOUBLE DUP DUP + + ; DOUBLE", &buf,
+                        errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 2);
+    const uint8_t expected[] = {static_cast<uint8_t>(Op::CALL), 0, 0,
+                                static_cast<uint8_t>(Op::CALL), 1, 0,
+                                static_cast<uint8_t>(Op::RET)};
+    CHECK(buf.size == sizeof(expected));
+    if (buf.size == sizeof(expected))
+      CHECK(memcmp(buf.data, expected, sizeof(expected)) == 0);
     v4front_free(&buf);
   }
 }
@@ -247,11 +255,17 @@ TEST_CASE("Case insensitive word names")
     v4front_free(&buf);
   }
 
-  SUBCASE("Duplicate detection is case insensitive")
+  SUBCASE("Shadowing is case insensitive")
   {
-    v4front_err err = v4front_compile(": double dup + ; : DOUBLE dup dup + + ;", &buf,
-                                      errmsg, sizeof(errmsg));
-    CHECK(err == FrontErr::DuplicateWord);
+    v4front_err err = v4front_compile(": double dup + ; : DOUBLE dup dup + + ; double",
+                                      &buf, errmsg, sizeof(errmsg));
+    CHECK(err == FrontErr::OK);
+    CHECK(buf.word_count == 2);
+    const uint8_t expected[] = {static_cast<uint8_t>(Op::CALL), 1, 0,
+                                static_cast<uint8_t>(Op::RET)};
+    CHECK(buf.size == sizeof(expected));
+    if (buf.size == sizeof(expected))
+      CHECK(memcmp(buf.data, expected, sizeof(expected)) == 0);
     v4front_free(&buf);
   }
 }

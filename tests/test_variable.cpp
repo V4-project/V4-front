@@ -155,14 +155,24 @@ TEST_CASE("variable: error - variable without name")
   CHECK(rc == V4FRONT_ERR_VariableWithoutName);
 }
 
-TEST_CASE("variable: error - duplicate variable name")
+TEST_CASE("variable: redefinition allocates new storage and shadows later references")
 {
   V4FrontBuf buf{};
   BufferGuard guard(&buf);
   char err[128];
 
-  int rc = v4front_compile("VARIABLE FOO  VARIABLE FOO", &buf, err, sizeof(err));
-  CHECK(rc == V4FRONT_ERR_DuplicateWord);
+  int rc = v4front_compile("VARIABLE FOO FOO VARIABLE FOO FOO", &buf, err, sizeof(err));
+  REQUIRE(rc == 0);
+  REQUIRE(buf.word_count == 2);
+  REQUIRE(buf.words[0].code_len == 6);
+  REQUIRE(buf.words[1].code_len == 6);
+  CHECK(read_u32_le(buf.words[0].code + 1) == 0x10000);
+  CHECK(read_u32_le(buf.words[1].code + 1) == 0x10004);
+  const uint8_t expected[] = {static_cast<uint8_t>(Op::CALL), 0, 0,
+                              static_cast<uint8_t>(Op::CALL), 1, 0,
+                              static_cast<uint8_t>(Op::RET)};
+  REQUIRE(buf.size == sizeof(expected));
+  CHECK(memcmp(buf.data, expected, sizeof(expected)) == 0);
 }
 
 TEST_CASE("variable: case insensitive")
@@ -249,14 +259,21 @@ TEST_CASE("variable: using variable before definition should fail")
   CHECK(rc == V4FRONT_ERR_UnknownToken);
 }
 
-TEST_CASE("variable: variable and constant with same name should fail")
+TEST_CASE("variable: variable can shadow a constant")
 {
   V4FrontBuf buf{};
   BufferGuard guard(&buf);
   char err[128];
 
-  int rc = v4front_compile("10 CONSTANT FOO  VARIABLE FOO", &buf, err, sizeof(err));
-  CHECK(rc == V4FRONT_ERR_DuplicateWord);
+  int rc = v4front_compile("10 CONSTANT FOO VARIABLE FOO FOO", &buf, err, sizeof(err));
+  REQUIRE(rc == 0);
+  REQUIRE(buf.word_count == 2);
+  REQUIRE(buf.words[1].code_len == 6);
+  CHECK(read_u32_le(buf.words[1].code + 1) == 0x10000);
+  const uint8_t expected[] = {static_cast<uint8_t>(Op::CALL), 1, 0,
+                              static_cast<uint8_t>(Op::RET)};
+  REQUIRE(buf.size == sizeof(expected));
+  CHECK(memcmp(buf.data, expected, sizeof(expected)) == 0);
 }
 
 TEST_CASE("variable: increment variable value")
